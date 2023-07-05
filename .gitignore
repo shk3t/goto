@@ -1,0 +1,17 @@
+# Personal
+.vscode/
+.idea/
+pyrightconfig.json
+
+# Private data
+metadata.json
+
+# Python
+__pycache__/
+.venv/
+venv/
+
+# React
+node_modules/
+build/
+.env
