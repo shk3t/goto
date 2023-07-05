@@ -1,7 +1,7 @@
 # Personal
 .vscode/
 .idea/
-pyrightconfig.json
+# pyrightconfig.json
 
 # Private data
 metadata.json

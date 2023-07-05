@@ -1,0 +1,7 @@
+{
+  "typeCheckingMode": "on",
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Linux",
+  "venvPath": ".",
+  "venv": ".venv"
+}
