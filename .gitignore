@@ -1,17 +1,23 @@
 # Personal
 .vscode/
 .idea/
-# pyrightconfig.json
+pyrightconfig.json
 
 # Private data
-metadata.json
+.env
+env.*
 
 # Python
 __pycache__/
 .venv/
 venv/
 
-# React
-node_modules/
+# Database
+db.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Builds
 build/
-.env
