@@ -1,4 +1,5 @@
 import json
+
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
 from django.http.response import Http404
@@ -21,7 +22,7 @@ def todo_view(request, id):
 def todos_view(request):
     if request.method == "GET":
         todos = list(Todo.objects.all())
-        response = [model_to_dict(todo) for todo in todos]
+        response = [model_to_dict(x) for x in todos]
         return JsonResponse(response, safe=False)
 
     elif request.method == "POST":

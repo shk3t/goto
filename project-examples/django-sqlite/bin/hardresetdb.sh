@@ -3,7 +3,7 @@
 BASE_DIR=$PWD
 DB_NAME="wb"
 USER_NAME="wb_admin"
-APPS=(users stats)
+APPS=(main)
 
 source $BASE_DIR/.venv/bin/activate
 
@@ -16,4 +16,3 @@ EOF
 rm -rf $BASE_DIR/*/migrations
 python $BASE_DIR/manage.py makemigrations "${APPS[@]}"
 python $BASE_DIR/manage.py migrate
-python $BASE_DIR/manage.py loaddata users wbaccounts

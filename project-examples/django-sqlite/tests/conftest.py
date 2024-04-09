@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import time
@@ -12,7 +13,8 @@ server_process: subprocess.Popen
 def pytest_sessionstart(session):
     global server_process
 
-    shutil.rmtree("src/main/migrations")
+    if os.path.isdir("src/main/migrations"):
+        shutil.rmtree("src/main/migrations")
     Path("db.sqlite3").unlink(missing_ok=True)
     subprocess.run(["python", "src/manage.py", "makemigrations", "main"])
     subprocess.run(["python", "src/manage.py", "migrate"])

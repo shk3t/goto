@@ -3,4 +3,4 @@ WORKDIR /django-sqlite-example
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-CMD ["pytest"]
+CMD ["pytest ./tests/test_crud.py"]
