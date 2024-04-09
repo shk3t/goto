@@ -1,12 +1,19 @@
 import pytest
 import requests
-from src.main.models import Collection, Todo
-from tests import env
+from tests.utils import HOST, DjangoImport
+
+with DjangoImport():
+    from main.models import Todo
+
+
+def teardown_module(module):
+    requests.delete(f"{HOST}/utils/clear")
 
 
 class TestModels:
     def test_collection(self):
-        pass
+        todos = Todo.objects.all()
+        print(todos)
 
     def test_todo(self):
         pass

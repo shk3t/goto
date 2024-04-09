@@ -1,9 +1,10 @@
+import shutil
 import subprocess
 import time
+from pathlib import Path
 
-import pathlib
 import requests
-import env
+from tests.utils import HOST
 
 server_process: subprocess.Popen
 
@@ -11,7 +12,8 @@ server_process: subprocess.Popen
 def pytest_sessionstart(session):
     global server_process
 
-    pathlib.Path("./db.sqlite3").unlink(missing_ok=True)
+    shutil.rmtree("src/main/migrations")
+    Path("db.sqlite3").unlink(missing_ok=True)
     subprocess.run(["python", "src/manage.py", "makemigrations", "main"])
     subprocess.run(["python", "src/manage.py", "migrate"])
 
@@ -19,7 +21,7 @@ def pytest_sessionstart(session):
 
     while True:
         time.sleep(1)
-        response = requests.get(f"{env.HOST}/ready")
+        response = requests.get(f"{HOST}/utils/ready")
         if response.status_code == 200:
             break
 
