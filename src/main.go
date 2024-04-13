@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"goto/src/config"
 	"goto/src/database"
 	"goto/src/router"
@@ -14,9 +15,10 @@ import (
 var dbConn *pgx.Conn
 
 func main() {
+	ctx := context.Background()
 
 	config.LoadConfig()
-	dbConn = database.Connect()
+	dbConn = database.Connect(ctx)
 
 	app := fiber.New(fiber.Config{
 		JSONEncoder: sonic.Marshal,

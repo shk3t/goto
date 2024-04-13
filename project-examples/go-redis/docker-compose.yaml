@@ -1,0 +1,21 @@
+version: "3.8"
+services:
+  cache:
+    image: redis:7
+    restart: always
+    ports:
+      - 6379:6379
+    volumes:
+      - go-redis-cache:/var/lib/redis
+      - go-redis-cache.conf:/etc/redis/redis.conf
+
+  backend:
+    depends_on:
+      - cache
+    build:
+      dockerfile: Dockerfile
+
+
+volumes:
+  go-redis-cache:
+  go-redis-cache.conf:
