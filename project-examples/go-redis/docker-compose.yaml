@@ -1,21 +1,14 @@
 version: "3.8"
 services:
-  cache:
-    image: redis:7
-    restart: always
+  rdb:
+    image: redis:7-alpine
     ports:
       - 6379:6379
-    volumes:
-      - go-redis-cache:/var/lib/redis
-      - go-redis-cache.conf:/etc/redis/redis.conf
 
-  backend:
+  app:
+    environment:
+      RDBHOST: "rdb"
     depends_on:
-      - cache
+      - rdb
     build:
-      dockerfile: Dockerfile
-
-
-volumes:
-  go-redis-cache:
-  go-redis-cache.conf:
+      context: .
