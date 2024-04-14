@@ -9,16 +9,16 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/logger"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var dbConn *pgx.Conn
+var dbPool *pgxpool.Pool
 
 func main() {
 	ctx := context.Background()
 
 	config.LoadConfig()
-	dbConn = database.Connect(ctx)
+	dbPool = database.Connect(ctx)
 
 	app := fiber.New(fiber.Config{
 		// Prefork:     true,

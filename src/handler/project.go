@@ -13,5 +13,5 @@ func LoadProject(c fiber.Ctx) error {
 		return c.Status(500).JSON(err)
 	}
 
-	return c.JSON(&fiber.Map{"status": "success"})
+	return c.JSON(&fiber.Map{"status": project.Url})
 }

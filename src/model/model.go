@@ -1,7 +1,7 @@
 package model
 
 type Project struct {
-	id   int
-	name string
-	path string
+	Id   int
+	Name string
+	Url  string
 }

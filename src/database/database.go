@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Connect(ctx context.Context) *pgx.Conn {
+func Connect(ctx context.Context) *pgxpool.Pool {
 	databaseUrl := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s",
 		os.Getenv("DB_USER"),
@@ -18,22 +18,14 @@ func Connect(ctx context.Context) *pgx.Conn {
 		os.Getenv("DB_NAME"),
 	)
 
-	conn, err := pgx.Connect(ctx, databaseUrl)
+	pool, err := pgxpool.New(ctx, databaseUrl)
+    defer pool.Close()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to create a pool for DB: %v\n", err)
 		os.Exit(1)
 	}
-	defer conn.Close(ctx)
 
-	// var result int
-	// err = conn.QueryRow(context.Background(), "select 1 + 1").
-	// 	Scan(&result)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "QueryRow failed: %v\n", err)
-	// 	os.Exit(1)
-	// }
+	InitSchema(ctx, pool)
 
-	InitSchema(ctx, conn)
-
-	return conn
+	return pool
 }
