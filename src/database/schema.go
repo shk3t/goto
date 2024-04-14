@@ -7,9 +7,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func InitSchema(conn *pgx.Conn) {
+func InitSchema(ctx context.Context, conn *pgx.Conn) {
 	conn.Query(
-		context.Background(),
+		ctx,
 		`
         CREATE TABLE IF NOT EXISTS project (
             id SERIAL PRIMARY KEY,
@@ -30,7 +30,7 @@ func InitSchema(conn *pgx.Conn) {
             code TEXT NOT NULL,
             correct BOOLEAN,
             error TEXT,
-            updated_at TIMESTAMP DEFAULT NOW();
+            updated_at TIMESTAMP DEFAULT NOW()
         );
         `,
 	)

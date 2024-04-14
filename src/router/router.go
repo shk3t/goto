@@ -3,7 +3,7 @@ package router
 import (
 	"goto/src/handler"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // SetupRoutes func
@@ -12,7 +12,7 @@ func SetupRoutes(app *fiber.App) {
 	api := app.Group("/api")
 
 	// routes
-	api.Get("/", func(c *fiber.Ctx) error {
+	api.Get("/", func(c fiber.Ctx) error {
 		return c.SendString("Hello, World!")
 	})
 

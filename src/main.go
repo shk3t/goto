@@ -7,8 +7,8 @@ import (
 	"goto/src/router"
 
 	"github.com/bytedance/sonic"
-	"github.com/gofiber/fiber/middleware"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -21,11 +21,12 @@ func main() {
 	dbConn = database.Connect(ctx)
 
 	app := fiber.New(fiber.Config{
+		// Prefork:     true,
 		JSONEncoder: sonic.Marshal,
 		JSONDecoder: sonic.Unmarshal,
 	})
 
-	app.Use(middleware.Logger())
+	app.Use(logger.New())
 
 	router.SetupRoutes(app)
 

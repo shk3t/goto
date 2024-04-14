@@ -33,7 +33,7 @@ func Connect(ctx context.Context) *pgx.Conn {
 	// 	os.Exit(1)
 	// }
 
-	InitSchema(conn)
+	InitSchema(ctx, conn)
 
 	return conn
 }
