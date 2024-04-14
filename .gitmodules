@@ -1,0 +1,3 @@
+[submodule "project-examples/go-redis"]
+	path = project-examples/go-redis
+	url = https://github.com/shk3t/go-redis.git
