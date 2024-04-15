@@ -11,10 +11,12 @@ env.*
 migrations/
 __pycache__/
 .venv/
+.pytest_cache/
 venv/
 
 # Database
 db.sqlite3
+dump.rdb
 
 # Logs
 logs/
@@ -22,3 +24,6 @@ logs/
 
 # Builds
 build/
+
+# Archives
+*.zip

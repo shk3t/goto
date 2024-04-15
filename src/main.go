@@ -15,9 +15,10 @@ import (
 var dbPool *pgxpool.Pool
 
 func main() {
-	ctx := context.Background()
-
 	config.LoadConfig()
+    config.InitDirs()
+
+	ctx := context.Background()
 	dbPool = database.Connect(ctx)
 
 	app := fiber.New(fiber.Config{

@@ -6,20 +6,17 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// SetupRoutes func
 func SetupRoutes(app *fiber.App) {
-	// Middleware
 	api := app.Group("/api")
 
-	// routes
 	api.Get("/", func(c fiber.Ctx) error {
 		return c.SendString("Hello, World!")
 	})
 
 	api.Post("/load-project", handler.LoadProject)
 
-	// api.Get("/", handler.GetAllProducts)
-	// api.Get("/:id", handler.GetSingleProduct)
-	// api.Post("/", handler.CreateProduct)
-	// api.Delete("/:id", handler.DeleteProduct)
+	// api.Get("/tasks", handler.GetTask)
+	// api.Get("/tasks/:id", handler.GetTasks)
+	// api.Post("/solution", handler.SubmitSolution)
+	// api.Get("/solution/:id", handler.GetSolution)
 }
