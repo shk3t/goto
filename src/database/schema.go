@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -42,5 +43,5 @@ func InitSchema(ctx context.Context, pool *pgxpool.Pool) {
         rows.Close()
 	}
 
-	fmt.Println("Schema inited successfully!")
+	log.Println("Schema inited successfully!")
 }

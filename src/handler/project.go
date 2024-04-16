@@ -2,9 +2,11 @@ package handler
 
 import (
 	// "goto/src/model"
-	"fmt"
+	"goto/src/config"
+	"goto/src/utils"
+	"log"
+	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -17,20 +19,19 @@ func LoadProject(c fiber.Ctx) error {
 		c.Status(400).SendString(err.Error())
 	}
 
-	err = c.SaveFile(file, filepath.Join("media", file.Filename))
-	if err != nil {
+	archivePath := filepath.Join(config.MediaPath, file.Filename)
+	if err := c.SaveFile(file, archivePath); err != nil {
 		c.Status(400).SendString(err.Error())
 	}
 
 	go func() {
-		timer := time.NewTimer(10 * time.Second)
-		<-timer.C
-		fmt.Println("BG TASK IS DONE")
+		if err := utils.Unzip(archivePath); err != nil {
+			log.Println(err)
+		}
+		if err := os.Remove(archivePath); err != nil {
+			log.Println(err)
+		}
 	}()
-
-	// if err := c.Bind().Body(project); err != nil {
-	// 	return c.Status(500).JSON(err)
-	// }
 
 	return c.SendString("OK")
 }

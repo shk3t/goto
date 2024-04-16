@@ -3,30 +3,27 @@ package utils
 import (
 	"archive/zip"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-func Unzip(path string) error {
-	dst := "output"
-	archive, err := zip.OpenReader(path)
+func Unzip(archivePath string) error {
+	destination, _ := filepath.Split(archivePath)
+	archive, err := zip.OpenReader(archivePath)
 	if err != nil {
 		return err
 	}
 	defer archive.Close()
 
 	for _, f := range archive.File {
-		filePath := filepath.Join(dst, f.Name)
-		fmt.Println("unzipping file ", filePath)
+		filePath := filepath.Join(destination, f.Name)
 
-		if !strings.HasPrefix(filePath, filepath.Clean(dst)+string(os.PathSeparator)) {
+		if !strings.HasPrefix(filePath, filepath.Clean(destination)+string(os.PathSeparator)) {
 			return errors.New("invalid file path")
 		}
 		if f.FileInfo().IsDir() {
-			fmt.Println("creating directory...")
 			os.MkdirAll(filePath, os.ModePerm)
 			continue
 		}
@@ -35,22 +32,22 @@ func Unzip(path string) error {
 			return err
 		}
 
-		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		destinationFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
 			return err
 		}
 
-		fileInArchive, err := f.Open()
+		sourceFile, err := f.Open()
 		if err != nil {
 			return err
 		}
 
-		if _, err := io.Copy(dstFile, fileInArchive); err != nil {
+		if _, err := io.Copy(destinationFile, sourceFile); err != nil {
 			return err
 		}
 
-		dstFile.Close()
-		fileInArchive.Close()
+		destinationFile.Close()
+		sourceFile.Close()
 	}
 
 	return nil
