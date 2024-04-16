@@ -1,3 +1,6 @@
 [submodule "project-examples/go-redis"]
 	path = project-examples/go-redis
 	url = https://github.com/shk3t/go-redis.git
+[submodule "project-examples/django-sqlite"]
+	path = project-examples/django-sqlite
+	url = https://github.com/shk3t/django-sqlite.git
