@@ -27,10 +27,21 @@ func LoadProject(c fiber.Ctx) error {
 	go func() {
 		if err := utils.Unzip(archivePath); err != nil {
 			log.Println(err)
+			return
 		}
 		if err := os.Remove(archivePath); err != nil {
 			log.Println(err)
+			return
 		}
+
+		projectPath := filepath.Join(config.MediaPath, utils.FileNameWithoutExt(file.Filename))
+		gotoConfigPath := filepath.Join(projectPath, config.GotoConfigName)
+		gotoConfig, err := config.LoadGotoConfig(gotoConfigPath)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		log.Println(gotoConfig)
 	}()
 
 	return c.SendString("OK")

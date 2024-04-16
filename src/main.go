@@ -15,7 +15,7 @@ import (
 var dbPool *pgxpool.Pool
 
 func main() {
-	config.LoadConfig()
+	config.LoadEnvs()
     config.InitDirs()
 
 	ctx := context.Background()

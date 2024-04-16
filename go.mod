@@ -3,6 +3,7 @@ module goto
 go 1.22.2
 
 require (
+	github.com/BurntSushi/toml v1.3.2
 	github.com/bytedance/sonic v1.11.3
 	github.com/gofiber/fiber/v3 v3.0.0-beta.2
 	github.com/jackc/pgx/v5 v5.5.5

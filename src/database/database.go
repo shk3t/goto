@@ -19,10 +19,9 @@ func Connect(ctx context.Context) *pgxpool.Pool {
 	)
 
 	pool, err := pgxpool.New(ctx, databaseUrl)
-    defer pool.Close()
+	defer pool.Close()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to create a pool for DB: %v\n", err)
-		os.Exit(1)
+		panic(err)
 	}
 
 	InitSchema(ctx, pool)
