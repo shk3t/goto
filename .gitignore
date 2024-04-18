@@ -27,3 +27,6 @@ build/
 
 # Archives
 *.zip
+
+# Mediafiels
+media/
