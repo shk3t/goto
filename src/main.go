@@ -16,7 +16,7 @@ var dbPool *pgxpool.Pool
 
 func main() {
 	config.LoadEnvs()
-    config.InitDirs()
+	config.InitDirs()
 
 	ctx := context.Background()
 	dbPool = database.Connect(ctx)
