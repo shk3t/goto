@@ -25,6 +25,9 @@ logs/
 # Builds
 build/
 
+# Debug
+__debug*
+
 # Archives
 *.zip
 
