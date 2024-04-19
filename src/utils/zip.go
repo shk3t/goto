@@ -9,16 +9,23 @@ import (
 	"strings"
 )
 
-func Unzip(archivePath string) error {
-	destination, _ := filepath.Split(archivePath)
+func Unzip(archivePath string, rootDirLikeArchiveName bool) error {
 	archive, err := zip.OpenReader(archivePath)
 	if err != nil {
 		return err
 	}
 	defer archive.Close()
 
+	destination, archiveName := filepath.Split(archivePath)
+	rootFileName := archive.File[0].Name
+	rootFileNameNew := FileNameWithoutExt(archiveName) + string(os.PathSeparator)
+
 	for _, f := range archive.File {
-		filePath := filepath.Join(destination, f.Name)
+		fileName := f.Name
+		if rootDirLikeArchiveName {
+			fileName = strings.Replace(f.Name, rootFileName, rootFileNameNew, 1)
+		}
+		filePath := filepath.Join(destination, fileName)
 
 		if !strings.HasPrefix(filePath, filepath.Clean(destination)+string(os.PathSeparator)) {
 			return errors.New("invalid file path")
