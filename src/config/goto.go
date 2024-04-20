@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"goto/src/model"
 	"os"
 	"strings"
 
@@ -10,21 +11,11 @@ import (
 )
 
 type GotoConfig struct {
-	Name             string
-	Language         string
-	Packages         []string
-	Containerization string
-	SrcDir           string
-	StubDir          string
-	TaskConfigs      []TaskConfig
+	model.ProjectBase
+	TaskConfigs []TaskConfig
 }
 
-type TaskConfig struct {
-	Name        string
-	Description string
-	RunTarget   string
-	InjectFiles map[string]string
-}
+type TaskConfig = model.TaskBase
 
 func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 	fatalError = errors.New("Bad config file format")
@@ -40,7 +31,7 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 
 	packs := d["packages"].([]any)
 	for _, p := range packs {
-		cfg.Packages = append(cfg.Packages, p.(string))
+		cfg.Modules = append(cfg.Modules, p.(string))
 	}
 
 	cfg.TaskConfigs = make([]TaskConfig, 3)

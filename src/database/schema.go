@@ -11,7 +11,7 @@ func InitSchema(ctx context.Context) {
         CREATE TABLE IF NOT EXISTS project (
             id SERIAL PRIMARY KEY,
             url VARCHAR(256),
-            dir VARCHAR(128) NOT NULL,
+            container VARCHAR(128) NOT NULL UNIQUE,
             name VARCHAR(64) NOT NULL,
             language VARCHAR(64) NOT NULL,
             containerization VARCHAR(64) NOT NULL DEFAULT 'docker',
@@ -19,7 +19,7 @@ func InitSchema(ctx context.Context) {
             stubdir VARCHAR(64) NOT NULL DEFAULT 'stubs'
         );`,
 		`
-        CREATE TABLE IF NOT EXISTS project_package (
+        CREATE TABLE IF NOT EXISTS project_module (
             id SERIAL PRIMARY KEY,
             project_id INTEGER NOT NULL REFERENCES project(id),
             name VARCHAR(64) NOT NULL
@@ -31,8 +31,9 @@ func InitSchema(ctx context.Context) {
             project_id INTEGER NOT NULL REFERENCES project(id),
             name VARCHAR(64) NOT NULL,
             description TEXT NOT NULL,
-            runtarget VARCHAR(256) NOT NULL
-        );`,
+            runtarget VARCHAR(256) NOT NULL,
+            UNIQUE(project_id, name)
+        );`,  // TODO: check composite uniqueness on GotoConfig level
 		`
         CREATE TABLE IF NOT EXISTS injectfile (
             id SERIAL PRIMARY KEY,
@@ -40,7 +41,6 @@ func InitSchema(ctx context.Context) {
             name VARCHAR(64) NOT NULL,
             filename VARCHAR(256) NOT NULL
         );`,
-
 
 		`
         CREATE TABLE IF NOT EXISTS solution (
