@@ -1,5 +1,14 @@
 package model
 
+type TaskBase struct {
+	Name        string
+	Description string
+	RunTarget   string
+	InjectFiles map[string]string
+}
+type Task = TaskBase
+type TaskConfig = TaskBase
+
 type ProjectBase struct {
 	Name             string
 	Language         string
@@ -8,14 +17,6 @@ type ProjectBase struct {
 	SrcDir           string
 	StubDir          string
 }
-
-type TaskBase struct {
-	Name        string
-	Description string
-	RunTarget   string
-	InjectFiles map[string]string
-}
-
 type Project struct {
 	ProjectBase
 	Id    int
@@ -23,5 +24,7 @@ type Project struct {
 	Dir   string
 	Tasks []Task
 }
-
-type Task = TaskBase
+type GotoConfig struct {
+	ProjectBase
+	TaskConfigs []TaskConfig
+}

@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"goto/src/config"
+	"goto/src/database/query"
+	"goto/src/model"
 	"goto/src/utils"
 	"log"
 	"os"
@@ -40,7 +43,7 @@ func LoadProject(c fiber.Ctx) error {
 
 		projectPath := filepath.Join(config.MediaPath, projectName)
 		gotoConfigPath := filepath.Join(projectPath, config.GotoConfigName)
-		gotoConfig, err := config.LoadGotoConfig(gotoConfigPath)
+		gotoConfig, err := model.LoadGotoConfig(gotoConfigPath)
 		if err != nil {
 			log.Println(err)
 			return
@@ -65,7 +68,9 @@ func LoadProject(c fiber.Ctx) error {
 			return
 		}
 
-		log.Println("NICE!!!!!!!!!!!!!!!!!!!1")
+		project := model.NewProjectFromConfig(gotoConfig)
+        project.Dir = projectName
+		query.CreateProject(context.Background(), project)
 	}()
 
 	return c.SendString("OK")

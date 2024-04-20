@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func CreateProject(ctx context.Context, p model.Project) error {
+func CreateProject(ctx context.Context, p *model.Project) error {
 	tx, err := database.ConnPool.Begin(ctx)
 	defer tx.Rollback(ctx)
 
@@ -59,34 +59,37 @@ func CreateProject(ctx context.Context, p model.Project) error {
 		return err
 	}
 
-	injectFilesByTaskName := make(map[string]map[string]string)
+	injectFilesByTaskName := make(map[string]model.Task)
 	for _, t := range p.Tasks {
-		injectFilesByTaskName[t.Name] = t.InjectFiles
+		injectFilesByTaskName[t.Name] = t
 	}
 
 	injectFileEntries := [][]any{}
-	rows, err := tx.Query(ctx, "SELECT * FROM task WHERE project_id = $1", projectId)
-	_, err = pgx.ForEachRow(rows, []any{}, func() error {
-		injectFileEntries = append(injectFileEntries, []any{fileName, filePath})
-		return nil
-	})
+	rows, err := tx.Query(ctx, "SELECT id, name FROM task WHERE project_id = $1", projectId)
+	for rows.Next() {
+		var taskId int
+		var taskName string
+		err = rows.Scan(&taskId, &taskName)
+		if err != nil {
+			return err
+		}
+
+		task := injectFilesByTaskName[taskName]
+		for name, path := range task.InjectFiles {
+			injectFileEntries = append(injectFileEntries, []any{taskId, name, path})
+		}
+	}
+
+	_, err = tx.CopyFrom(
+		ctx,
+		pgx.Identifier{"injectfile"},
+		[]string{"task_id", "name", "path"},
+		pgx.CopyFromRows(injectFileEntries),
+	)
 	if err != nil {
 		return err
 	}
-	rows.Close()
 
 	err = tx.Commit(ctx)
 	return err
 }
-
-// func CreateProject(ctx context.Context, project model.Project) error {
-// 	rows, err := database.ConnPool.Query(ctx, `
-//         INSERT INTO project(url, dir, name, language, containerization, srcdir, stubdir)
-//         VALUES ($1, $2, $3, $4)
-//         ;`)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	rows.Close()
-//     return  nil
-// }

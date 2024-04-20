@@ -21,25 +21,26 @@ func InitSchema(ctx context.Context) {
 		`
         CREATE TABLE IF NOT EXISTS project_module (
             id SERIAL PRIMARY KEY,
-            project_id INTEGER NOT NULL REFERENCES project(id),
+            project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
             name VARCHAR(64) NOT NULL
         );`,
 
 		`
         CREATE TABLE IF NOT EXISTS task (
             id SERIAL PRIMARY KEY,
-            project_id INTEGER NOT NULL REFERENCES project(id),
+            project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
             name VARCHAR(64) NOT NULL,
             description TEXT NOT NULL,
             runtarget VARCHAR(256) NOT NULL,
             UNIQUE(project_id, name)
-        );`,  // TODO: check composite uniqueness on GotoConfig level
+        );`,
 		`
         CREATE TABLE IF NOT EXISTS injectfile (
             id SERIAL PRIMARY KEY,
-            task_id INTEGER NOT NULL REFERENCES task(id),
+            task_id INTEGER NOT NULL REFERENCES task(id) ON DELETE CASCADE,
             name VARCHAR(64) NOT NULL,
-            filename VARCHAR(256) NOT NULL
+            path VARCHAR(256) NOT NULL
+            UNIQUE(task_id, name)
         );`,
 
 		`
