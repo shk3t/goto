@@ -20,6 +20,7 @@ func main() {
 
 	ctx := context.Background()
 	database.Connect(ctx)
+    defer database.ConnPool.Close()
 
 	app := fiber.New(fiber.Config{
 		// Prefork:     true,

@@ -22,7 +22,6 @@ func Connect(ctx context.Context) {
 
 	var err error
 	ConnPool, err = pgxpool.New(ctx, databaseUrl)
-	defer ConnPool.Close()
 	if err != nil {
 		panic(err)
 	}

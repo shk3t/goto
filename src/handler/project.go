@@ -9,6 +9,8 @@ import (
 	"goto/src/utils"
 	"log"
 	"os"
+	"strconv"
+
 	"os/exec"
 	"path/filepath"
 
@@ -17,26 +19,35 @@ import (
 )
 
 func LoadProject(c fiber.Ctx) error {
-	file, err := c.FormFile("project")
-	if err != nil {
-		c.Status(400).SendString(err.Error())
-	}
+	body := struct{ Url string }{}
+	c.Bind().Body(&body)
+	url := body.Url
 
-	postfix := uuid.New().String()
-	nameLess, extension := utils.SplitExt(file.Filename)
-	projectName := nameLess + "_" + postfix
+	if url != "" {
+	} else {
+		file, err := c.FormFile("project")
+		if err != nil {
+			return c.Status(400).SendString("Use `project` as a key for uploaded file")
+		}
 
-	archivePath := filepath.Join(config.MediaPath, projectName+extension)
-	if err := c.SaveFile(file, archivePath); err != nil {
-		c.Status(400).SendString(err.Error())
+		postfix := uuid.New().String()
+		nameLess, extension := utils.SplitExt(file.Filename)
+		projectName := nameLess + "_" + postfix
+
+		archivePath := filepath.Join(config.MediaPath, projectName+extension)
+		if err = c.SaveFile(file, archivePath); err != nil {
+			return c.Status(400).SendString(err.Error())
+		}
 	}
 
 	go func() {
-		if err := utils.Unzip(archivePath, true); err != nil {
+		ctx := context.Background()
+
+		if err = utils.Unzip(archivePath, true); err != nil {
 			log.Println(err)
 			return
 		}
-		if err := os.Remove(archivePath); err != nil {
+		if err = os.Remove(archivePath); err != nil {
 			log.Println(err)
 			return
 		}
@@ -45,6 +56,14 @@ func LoadProject(c fiber.Ctx) error {
 		gotoConfigPath := filepath.Join(projectPath, config.GotoConfigName)
 		gotoConfig, err := model.LoadGotoConfig(gotoConfigPath)
 		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		project := model.NewProjectFromConfig(gotoConfig)
+		project.Dir = projectName
+		if err = query.CreateProject(ctx, project); err != nil {
+			os.RemoveAll(projectPath)
 			log.Println(err)
 			return
 		}
@@ -64,14 +83,44 @@ func LoadProject(c fiber.Ctx) error {
 		buildCmd.Dir = projectPath
 		err = buildCmd.Run()
 		if err != nil {
+			query.DeleteProject(ctx, project.Id)
+			os.RemoveAll(projectPath)
 			log.Println(err)
 			return
 		}
-
-		project := model.NewProjectFromConfig(gotoConfig)
-        project.Dir = projectName
-		query.CreateProject(context.Background(), project)
 	}()
+
+	return c.SendString("OK")
+}
+
+func DeleteProject(c fiber.Ctx) error {
+	ctx := context.Background()
+
+	projectId, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(400).SendString("Id is not correct")
+	}
+
+	project, err := query.GetProject(ctx, projectId)
+	if err != nil {
+		return c.Status(404).SendString("Project not found")
+	}
+
+	query.DeleteProject(ctx, projectId)
+
+	projectPath := filepath.Join(config.MediaPath, project.Dir)
+	os.RemoveAll(projectPath)
+
+	switch project.Containerization {
+	case "docker":
+		exec.Command("docker", "image", "remove", "-f", project.Dir).Run()
+		exec.Command("docker", "system", "prune", "-f").Run()
+	case "docker-compose":
+		removeCmd := exec.Command("docker", "compose", "remove", "-fsv")
+		removeCmd.Dir = config.MediaPath
+		removeCmd.Run()
+		exec.Command("docker", "system", "prune", "-f").Run()
+	}
 
 	return c.SendString("OK")
 }

@@ -20,7 +20,6 @@ type ProjectBase struct {
 type Project struct {
 	ProjectBase
 	Id    int
-	Url   string
 	Dir   string
 	Tasks []Task
 }

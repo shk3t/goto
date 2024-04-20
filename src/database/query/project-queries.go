@@ -2,23 +2,39 @@ package query
 
 import (
 	"context"
-	"goto/src/database"
+	db "goto/src/database"
 	"goto/src/model"
 
 	"github.com/jackc/pgx/v5"
 )
 
+func GetProject(ctx context.Context, id int) (*model.Project, error) {
+	project := model.Project{}
+	err := db.ConnPool.QueryRow(
+		ctx, "SELECT * FROM project WHERE id = $1", id,
+	).Scan(
+		&project.Id,
+		&project.Dir,
+		&project.Name,
+		&project.Language,
+		&project.Containerization,
+		&project.SrcDir,
+		&project.StubDir,
+	)
+	return &project, err
+}
+
 func CreateProject(ctx context.Context, p *model.Project) error {
-	tx, err := database.ConnPool.Begin(ctx)
+	tx, err := db.ConnPool.BeginTx(ctx, pgx.TxOptions{})
 	defer tx.Rollback(ctx)
 
 	projectEntries := [][]any{
-		{p.Url, p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir},
+		{p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir},
 	}
 	_, err = tx.CopyFrom(
 		ctx,
 		pgx.Identifier{"project"},
-		[]string{"url", "dir", "name", "language", "containerization", "srcdir", "stubdir"},
+		[]string{"dir", "name", "language", "containerization", "srcdir", "stubdir"},
 		pgx.CopyFromRows(projectEntries),
 	)
 	if err != nil {
@@ -92,4 +108,9 @@ func CreateProject(ctx context.Context, p *model.Project) error {
 
 	err = tx.Commit(ctx)
 	return err
+}
+
+func DeleteProject(ctx context.Context, id int) {
+	rows, _ := db.ConnPool.Query(ctx, "DELETE FROM project WHERE id = $1", id)
+	rows.Close()
 }

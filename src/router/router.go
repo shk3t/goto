@@ -13,7 +13,8 @@ func SetupRoutes(app *fiber.App) {
 		return c.SendString("Hello, World!")
 	})
 
-	api.Post("/load-project", handler.LoadProject)
+	api.Post("/project", handler.LoadProject)
+    api.Delete("/project/:id", handler.DeleteProject)
 
 	// api.Get("/tasks", handler.GetTask)
 	// api.Get("/tasks/:id", handler.GetTasks)

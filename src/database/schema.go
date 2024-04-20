@@ -10,8 +10,7 @@ func InitSchema(ctx context.Context) {
 		`
         CREATE TABLE IF NOT EXISTS project (
             id SERIAL PRIMARY KEY,
-            url VARCHAR(256),
-            container VARCHAR(128) NOT NULL UNIQUE,
+            dir VARCHAR(128) NOT NULL UNIQUE,
             name VARCHAR(64) NOT NULL,
             language VARCHAR(64) NOT NULL,
             containerization VARCHAR(64) NOT NULL DEFAULT 'docker',
@@ -39,7 +38,7 @@ func InitSchema(ctx context.Context) {
             id SERIAL PRIMARY KEY,
             task_id INTEGER NOT NULL REFERENCES task(id) ON DELETE CASCADE,
             name VARCHAR(64) NOT NULL,
-            path VARCHAR(256) NOT NULL
+            path VARCHAR(256) NOT NULL,
             UNIQUE(task_id, name)
         );`,
 
