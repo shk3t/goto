@@ -63,16 +63,17 @@ func CreateProject(ctx context.Context, p model.Project) error {
 	for _, t := range p.Tasks {
 		injectFilesByTaskName[t.Name] = t.InjectFiles
 	}
+
 	injectFileEntries := [][]any{}
-	// rows, err := tx.Query(ctx, "SELECT * FROM task WHERE project_id = $1", projectId)
-	//    pgx.ForEachRow()
-	//    if err != nil {
-	//        return err
-	//    }
-	// rows.Close()
-	for fileName, filePath := range t.InjectFiles {
+	rows, err := tx.Query(ctx, "SELECT * FROM task WHERE project_id = $1", projectId)
+	_, err = pgx.ForEachRow(rows, []any{}, func() error {
 		injectFileEntries = append(injectFileEntries, []any{fileName, filePath})
+		return nil
+	})
+	if err != nil {
+		return err
 	}
+	rows.Close()
 
 	err = tx.Commit(ctx)
 	return err
