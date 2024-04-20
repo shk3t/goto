@@ -19,7 +19,7 @@ func main() {
 	config.InitDirs()
 
 	ctx := context.Background()
-	dbPool = database.Connect(ctx)
+	database.Connect(ctx)
 
 	app := fiber.New(fiber.Config{
 		// Prefork:     true,

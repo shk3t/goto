@@ -8,7 +8,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Connect(ctx context.Context) *pgxpool.Pool {
+var ConnPool *pgxpool.Pool
+
+func Connect(ctx context.Context) {
 	databaseUrl := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s",
 		os.Getenv("DB_USER"),
@@ -18,13 +20,12 @@ func Connect(ctx context.Context) *pgxpool.Pool {
 		os.Getenv("DB_NAME"),
 	)
 
-	pool, err := pgxpool.New(ctx, databaseUrl)
-	defer pool.Close()
+	var err error
+	ConnPool, err = pgxpool.New(ctx, databaseUrl)
+	defer ConnPool.Close()
 	if err != nil {
 		panic(err)
 	}
 
-	InitSchema(ctx, pool)
-
-	return pool
+	InitSchema(ctx)
 }
