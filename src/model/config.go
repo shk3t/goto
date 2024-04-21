@@ -2,7 +2,6 @@ package model
 
 import (
 	"errors"
-	"fmt"
 	"goto/src/utils"
 	"os"
 	"strings"
@@ -18,9 +17,9 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 
 	cfg.Name = d["name"].(string)
 	cfg.Language = d["language"].(string)
-	cfg.Containerization = d["containerization"].(string)
-	cfg.SrcDir = d["srcdir"].(string)
-	cfg.StubDir = d["stubdir"].(string)
+	cfg.Containerization = utils.GetAssertDefault(d, "containerization", "docker")
+	cfg.SrcDir = utils.GetAssertDefault(d, "srcdir", "src")
+	cfg.StubDir = utils.GetAssertDefault(d, "stubdir", "stubs")
 
 	packs := d["modules"].([]any)
 	for _, p := range packs {
@@ -34,8 +33,8 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 	for i, tc := range taskConfigs {
 		taskConfig := TaskConfig{
 			Name:        tc["name"].(string),
-			Description: tc["description"].(string),
-			RunTarget:   tc["runtarget"].(string),
+			Description: utils.GetAssertDefault(tc, "description", ""),
+			RunTarget:   utils.GetAssertDefault(tc, "runtarget", ""),
 		}
 		cfg.TaskConfigs[i] = taskConfig
 		taskNames[i] = tc["name"].(string)
@@ -83,7 +82,6 @@ func LoadGotoConfig(configPath string) (*GotoConfig, error) {
 	}
 
 	_, err = toml.Decode(string(tomlBytes), &config)
-	fmt.Println(config)
 	if err != nil {
 		return &config, err
 	}

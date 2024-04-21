@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"os/exec"
 	"path/filepath"
@@ -18,19 +19,87 @@ import (
 	"github.com/google/uuid"
 )
 
+func PostCreateProject(projectName string) {
+	ctx := context.Background()
+
+	projectPath := filepath.Join(config.MediaPath, projectName)
+	gotoConfigPath := filepath.Join(projectPath, config.GotoConfigName)
+	gotoConfig, err := model.LoadGotoConfig(gotoConfigPath)
+	if err != nil {
+		os.RemoveAll(projectPath)
+		log.Println(err)
+		return
+	}
+
+	project := model.NewProjectFromConfig(gotoConfig)
+	project.Dir = projectName
+	if err = query.CreateProject(ctx, project); err != nil {
+		os.RemoveAll(projectPath)
+		log.Println(err)
+		return
+	}
+
+	var buildCmd *exec.Cmd
+	switch gotoConfig.Containerization {
+	case "docker":
+		buildCmd = exec.Command("docker", "buildx", "build", "-t", projectName, ".")
+	case "docker-compose":
+		buildCmd = exec.Command("docker", "compose", "build")
+	default:
+		err = errors.New("Specified containerization type is not implemented")
+		log.Println(err)
+		return
+	}
+
+	buildCmd.Dir = projectPath
+	err = buildCmd.Run()
+	if err != nil {
+		query.DeleteProject(ctx, project.Id)
+		os.RemoveAll(projectPath)
+		log.Println(err)
+		return
+	}
+}
+
+func PostCreateProjectZip(projectName string, archivePath string) {
+	if err := utils.Unzip(archivePath, true); err != nil {
+		log.Println(err)
+		return
+	}
+	if err := os.Remove(archivePath); err != nil {
+		log.Println(err)
+		return
+	}
+
+	PostCreateProject(projectName)
+}
+
 func LoadProject(c fiber.Ctx) error {
 	body := struct{ Url string }{}
 	c.Bind().Body(&body)
 	url := body.Url
 
+	postfix := uuid.New().String()
+
 	if url != "" {
+		urlParts := strings.Split(url, "/")
+		repoName := urlParts[len(urlParts)-1]
+		projectName := repoName + "_" + postfix
+
+		gitCloneCmd := exec.Command("git", "clone", url, projectName)
+		gitCloneCmd.Dir = config.MediaPath
+		if err := gitCloneCmd.Run(); err != nil {
+			return c.Status(400).SendString("Invalid url")
+		}
+
+		go PostCreateProject(projectName)
+
 	} else {
 		file, err := c.FormFile("project")
 		if err != nil {
 			return c.Status(400).SendString("Use `project` as a key for uploaded file")
 		}
 
-		postfix := uuid.New().String()
 		nameLess, extension := utils.SplitExt(file.Filename)
 		projectName := nameLess + "_" + postfix
 
@@ -38,57 +107,9 @@ func LoadProject(c fiber.Ctx) error {
 		if err = c.SaveFile(file, archivePath); err != nil {
 			return c.Status(400).SendString(err.Error())
 		}
+
+		go PostCreateProjectZip(projectName, archivePath)
 	}
-
-	go func() {
-		ctx := context.Background()
-
-		if err = utils.Unzip(archivePath, true); err != nil {
-			log.Println(err)
-			return
-		}
-		if err = os.Remove(archivePath); err != nil {
-			log.Println(err)
-			return
-		}
-
-		projectPath := filepath.Join(config.MediaPath, projectName)
-		gotoConfigPath := filepath.Join(projectPath, config.GotoConfigName)
-		gotoConfig, err := model.LoadGotoConfig(gotoConfigPath)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		project := model.NewProjectFromConfig(gotoConfig)
-		project.Dir = projectName
-		if err = query.CreateProject(ctx, project); err != nil {
-			os.RemoveAll(projectPath)
-			log.Println(err)
-			return
-		}
-
-		var buildCmd *exec.Cmd
-		switch gotoConfig.Containerization {
-		case "docker":
-			buildCmd = exec.Command("docker", "buildx", "build", "-t", projectName, ".")
-		case "docker-compose":
-			buildCmd = exec.Command("docker", "compose", "build")
-		default:
-			err = errors.New("Specified containerization type is not implemented")
-			log.Println(err)
-			return
-		}
-
-		buildCmd.Dir = projectPath
-		err = buildCmd.Run()
-		if err != nil {
-			query.DeleteProject(ctx, project.Id)
-			os.RemoveAll(projectPath)
-			log.Println(err)
-			return
-		}
-	}()
 
 	return c.SendString("OK")
 }
