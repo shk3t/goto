@@ -1,12 +1,22 @@
 package model
 
+type User struct {
+	Id       int
+	Login    string
+	Password string
+	IsAdmin  bool
+}
+
 type TaskBase struct {
 	Name        string
 	Description string
 	RunTarget   string
 	InjectFiles map[string]string
 }
-type Task = TaskBase
+type Task struct {
+	TaskBase
+	Id int
+}
 type TaskConfig = TaskBase
 
 type ProjectBase struct {

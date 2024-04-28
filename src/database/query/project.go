@@ -25,13 +25,13 @@ func GetProject(ctx context.Context, id int) (*model.Project, error) {
 }
 
 func CreateProject(ctx context.Context, p *model.Project) error {
-	tx, err := db.ConnPool.BeginTx(ctx, pgx.TxOptions{})
+	tx, _ := db.ConnPool.BeginTx(ctx, pgx.TxOptions{})
 	defer tx.Rollback(ctx)
 
 	projectEntries := [][]any{
 		{p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir},
 	}
-	_, err = tx.CopyFrom(
+	_, err := tx.CopyFrom(
 		ctx,
 		pgx.Identifier{"project"},
 		[]string{"dir", "name", "language", "containerization", "srcdir", "stubdir"},

@@ -19,7 +19,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func PostCreateProject(projectName string) {
+func postCreateProject(projectName string) {
 	ctx := context.Background()
 
 	projectPath := filepath.Join(config.MediaPath, projectName)
@@ -61,7 +61,7 @@ func PostCreateProject(projectName string) {
 	}
 }
 
-func PostCreateProjectZip(projectName string, archivePath string) {
+func postCreateProjectZip(projectName string, archivePath string) {
 	if err := utils.Unzip(archivePath, true); err != nil {
 		log.Println(err)
 		return
@@ -71,7 +71,7 @@ func PostCreateProjectZip(projectName string, archivePath string) {
 		return
 	}
 
-	PostCreateProject(projectName)
+	postCreateProject(projectName)
 }
 
 func LoadProject(c fiber.Ctx) error {
@@ -92,7 +92,7 @@ func LoadProject(c fiber.Ctx) error {
 			return c.Status(400).SendString("Invalid url")
 		}
 
-		go PostCreateProject(projectName)
+		go postCreateProject(projectName)
 
 	} else {
 		file, err := c.FormFile("project")
@@ -108,10 +108,10 @@ func LoadProject(c fiber.Ctx) error {
 			return c.Status(400).SendString(err.Error())
 		}
 
-		go PostCreateProjectZip(projectName, archivePath)
+		go postCreateProjectZip(projectName, archivePath)
 	}
 
-	return c.SendString("OK")
+	return c.SendStatus(fiber.StatusOK)
 }
 
 func DeleteProject(c fiber.Ctx) error {
@@ -143,5 +143,5 @@ func DeleteProject(c fiber.Ctx) error {
 		exec.Command("docker", "system", "prune", "-f").Run()
 	}
 
-	return c.SendString("OK")
+	return c.SendStatus(fiber.StatusOK)
 }
