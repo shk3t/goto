@@ -1,22 +1,26 @@
 package router
 
 import (
+	"goto/src/config"
 	"goto/src/handler"
 
-	"github.com/gofiber/fiber/v3"
+	jwtware "github.com/gofiber/contrib/jwt"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func SetupRoutes(app *fiber.App) {
 	api := app.Group("/api")
 
-	api.Get("/", func(c fiber.Ctx) error {
-		return c.SendString("Hello, World!")
-	})
+	api.Post("/register", handler.Register)
+	// api.Post("/login", handler.Login)
 
-    api.Post("/login", handler.Login)
+	api.Use(jwtware.New(jwtware.Config{
+		SigningKey: jwtware.SigningKey{Key: []byte(config.SecretKey)},
+	}))
 
 	api.Post("/project", handler.LoadProject)
-    api.Delete("/project/:id", handler.DeleteProject)
+	api.Delete("/project/:id", handler.DeleteProject)
 
 	// api.Get("/tasks", handler.GetTask)
 	// api.Get("/tasks/:id", handler.GetTasks)

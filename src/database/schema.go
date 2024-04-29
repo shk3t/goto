@@ -18,7 +18,7 @@ func InitSchema(ctx context.Context) {
             login VARCHAR(64) NOT NULL UNIQUE,
             password VARCHAR(128) NOT NULL,
             is_admin BOOLEAN NOT NULL DEFAULT false
-        );`,
+        )`,
 		`
         CREATE TABLE IF NOT EXISTS project (
             id SERIAL PRIMARY KEY,
@@ -29,13 +29,13 @@ func InitSchema(ctx context.Context) {
             containerization VARCHAR(64) NOT NULL DEFAULT 'docker',
             srcdir VARCHAR(64) NOT NULL DEFAULT 'src',
             stubdir VARCHAR(64) NOT NULL DEFAULT 'stubs'
-        );`,
+        )`,
 		`
         CREATE TABLE IF NOT EXISTS project_module (
             id SERIAL PRIMARY KEY,
             project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
             name VARCHAR(64) NOT NULL
-        );`,
+        )`,
 
 		`
         CREATE TABLE IF NOT EXISTS task (
@@ -45,7 +45,7 @@ func InitSchema(ctx context.Context) {
             description TEXT NOT NULL,
             runtarget VARCHAR(256) NOT NULL,
             UNIQUE(project_id, name)
-        );`,
+        )`,
 		`
         CREATE TABLE IF NOT EXISTS injectfile (
             id SERIAL PRIMARY KEY,
@@ -53,7 +53,7 @@ func InitSchema(ctx context.Context) {
             name VARCHAR(64) NOT NULL,
             path VARCHAR(256) NOT NULL,
             UNIQUE(task_id, name)
-        );`,
+        )`,
 
 		`
         CREATE TABLE IF NOT EXISTS solution (
@@ -64,15 +64,14 @@ func InitSchema(ctx context.Context) {
             code TEXT NOT NULL,
             respone TEXT,
             updated_at TIMESTAMP DEFAULT NOW()
-        );`,
+        )`,
 	}
 
 	for _, tableDef := range tableDefinitions {
-		rows, err := tx.Query(ctx, tableDef)
+		_, err := tx.Exec(ctx, tableDef)
 		if err != nil {
 			panic("Schema initiation failed: " + err.Error())
 		}
-		rows.Close()
 	}
 
 	tx.Commit(ctx)

@@ -111,6 +111,5 @@ func CreateProject(ctx context.Context, p *model.Project) error {
 }
 
 func DeleteProject(ctx context.Context, id int) {
-	rows, _ := db.ConnPool.Query(ctx, "DELETE FROM project WHERE id = $1", id)
-	rows.Close()
+	db.ConnPool.Exec(ctx, "DELETE FROM project WHERE id = $1", id)
 }

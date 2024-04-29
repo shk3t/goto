@@ -7,7 +7,6 @@ import (
 	"goto/src/database/query"
 	"goto/src/model"
 	"goto/src/utils"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -15,7 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
@@ -27,7 +26,6 @@ func postCreateProject(projectName string) {
 	gotoConfig, err := model.LoadGotoConfig(gotoConfigPath)
 	if err != nil {
 		os.RemoveAll(projectPath)
-		log.Println(err)
 		return
 	}
 
@@ -35,7 +33,6 @@ func postCreateProject(projectName string) {
 	project.Dir = projectName
 	if err = query.CreateProject(ctx, project); err != nil {
 		os.RemoveAll(projectPath)
-		log.Println(err)
 		return
 	}
 
@@ -47,7 +44,6 @@ func postCreateProject(projectName string) {
 		buildCmd = exec.Command("docker", "compose", "build")
 	default:
 		err = errors.New("Specified containerization type is not implemented")
-		log.Println(err)
 		return
 	}
 
@@ -56,40 +52,38 @@ func postCreateProject(projectName string) {
 	if err != nil {
 		query.DeleteProject(ctx, project.Id)
 		os.RemoveAll(projectPath)
-		log.Println(err)
 		return
 	}
 }
 
 func postCreateProjectZip(projectName string, archivePath string) {
 	if err := utils.Unzip(archivePath, true); err != nil {
-		log.Println(err)
 		return
 	}
 	if err := os.Remove(archivePath); err != nil {
-		log.Println(err)
 		return
 	}
 
 	postCreateProject(projectName)
 }
 
-func LoadProject(c fiber.Ctx) error {
+func LoadProject(c *fiber.Ctx) error {
 	body := struct{ Url string }{}
-	c.Bind().Body(&body)
-	url := body.Url
+	if err := c.BodyParser(&body); err != nil {
+		return err
+	}
 
 	postfix := uuid.New().String()
 
-	if url != "" {
-		urlParts := strings.Split(url, "/")
+	if body.Url != "" {
+		urlParts := strings.Split(body.Url, "/")
 		repoName := urlParts[len(urlParts)-1]
 		projectName := repoName + "_" + postfix
 
-		gitCloneCmd := exec.Command("git", "clone", url, projectName)
+		gitCloneCmd := exec.Command("git", "clone", body.Url, projectName)
 		gitCloneCmd.Dir = config.MediaPath
 		if err := gitCloneCmd.Run(); err != nil {
-			return c.Status(400).SendString("Invalid url")
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid url")
 		}
 
 		go postCreateProject(projectName)
@@ -97,7 +91,7 @@ func LoadProject(c fiber.Ctx) error {
 	} else {
 		file, err := c.FormFile("project")
 		if err != nil {
-			return c.Status(400).SendString("Use `project` as a key for uploaded file")
+			return c.Status(fiber.StatusBadRequest).SendString("Use `project` as a key for uploaded file")
 		}
 
 		nameLess, extension := utils.SplitExt(file.Filename)
@@ -105,7 +99,7 @@ func LoadProject(c fiber.Ctx) error {
 
 		archivePath := filepath.Join(config.MediaPath, projectName+extension)
 		if err = c.SaveFile(file, archivePath); err != nil {
-			return c.Status(400).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
 
 		go postCreateProjectZip(projectName, archivePath)
@@ -114,12 +108,12 @@ func LoadProject(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func DeleteProject(c fiber.Ctx) error {
+func DeleteProject(c *fiber.Ctx) error {
 	ctx := context.Background()
 
 	projectId, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-		return c.Status(400).SendString("Id is not correct")
+		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
 
 	project, err := query.GetProject(ctx, projectId)

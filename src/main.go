@@ -7,9 +7,8 @@ import (
 	"goto/src/router"
 
 	"github.com/bytedance/sonic"
-	jwtware "github.com/gofiber/contrib/jwt"
-	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/logger"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -24,15 +23,12 @@ func main() {
 	defer database.ConnPool.Close()
 
 	app := fiber.New(fiber.Config{
-		// Prefork:     true,
+		Prefork:     false,
 		JSONEncoder: sonic.Marshal,
 		JSONDecoder: sonic.Unmarshal,
 	})
 
 	app.Use(logger.New())
-	app.Use(jwtware.New(jwtware.Config{
-		SigningKey: jwtware.SigningKey{Key: []byte(config.SecretKey)},
-	}))
 
 	router.SetupRoutes(app)
 

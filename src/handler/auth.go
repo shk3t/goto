@@ -7,7 +7,7 @@ import (
 	"goto/src/model"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,6 +22,16 @@ func checkPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
+func getJwtToken(user *model.User) (string, error) {
+	claims := jwt.MapClaims{
+		"login": user.Login,
+		"exp":   time.Now().Add(24 * 30 * time.Hour).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	encodedToken, err := token.SignedString([]byte(config.SecretKey))
+	return encodedToken, err
+}
+
 // func main() {
 //     password := "secret"
 //     hash, _ := HashPassword(password) // ignore error for the sake of simplicity
@@ -33,19 +43,22 @@ func checkPasswordHash(password, hash string) bool {
 //     fmt.Println("Match:   ", match)
 // }
 
-func Register(c fiber.Ctx) error {
+func Register(c *fiber.Ctx) error {
 	ctx := context.Background()
 	user := model.User{}
-	c.Bind().Body(&user)
+	if err := c.BodyParser(&user); err != nil {
+		return err
+	}
 
 	if user.Login == "" || user.Password == "" {
-		return c.Status(400).SendString("`login` or `password` are not specified")
+		return c.Status(fiber.StatusBadRequest).
+			SendString("`login` or `password` are not specified")
 	}
 	if len(user.Password) < 8 {
-		return c.Status(400).SendString("Password is too short")
+		return c.Status(fiber.StatusBadRequest).SendString("Password is too short")
 	}
 	if query.IsLoginInUse(ctx, user.Login) {
-		return c.Status(400).SendString("Login is already in use")
+		return c.Status(fiber.StatusBadRequest).SendString("Login is already in use")
 	}
 
 	passwordHash, err := hashPassword(user.Password)
@@ -55,18 +68,14 @@ func Register(c fiber.Ctx) error {
 
 	user = model.User{Login: user.Login, Password: passwordHash}
 	if err := query.CreateUser(ctx, &user); err != nil {
-		return c.Status(400).SendString(err.Error())
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
-	claims := jwt.MapClaims{
-		"login": user.Login,
-		"exp":   time.Now().Add(24 * 30 * time.Hour).Unix(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	encodedToken, err := token.SignedString([]byte(config.SecretKey))
+	encodedToken, err := getJwtToken(&user)
 	if err != nil {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
+
 	return c.JSON(fiber.Map{"token": encodedToken})
 }
 

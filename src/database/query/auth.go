@@ -17,22 +17,30 @@ func GetUser(ctx context.Context, id int) (*model.User, error) {
 func IsLoginInUse(ctx context.Context, login string) bool {
 	var exists bool
 	db.ConnPool.QueryRow(
-		ctx, "SELECT EXISTS(SELECT 1 FROM \"user\" WHERE login=$1)", login,
+		ctx, "SELECT EXISTS(SELECT 1 FROM \"user\" WHERE login = $1)", login,
 	).Scan(&exists)
 	return exists
 }
 
 func CreateUser(ctx context.Context, u *model.User) error {
-	// rows, _ := db.ConnPool.Query(ctx, "DELETE FROM user WHERE id = $1", id)
-	// rows.Close()
-	return nil
+	_, err := db.ConnPool.Exec(
+		ctx,
+		"INSERT INTO \"user\" (login, password) VALUES ($1, $2)",
+		u.Login, u.Password,
+	)
+	return err
 }
 
-func UpdateUser(ctx context.Context, u *model.User) error {
-	return nil
+func UpdateUser(ctx context.Context, id int, u *model.User) error {
+	_, err := db.ConnPool.Exec(
+		ctx,
+		"UPDATE \"user\" SET login = $1, password $2 WHERE id = $3",
+		u.Login, u.Password,
+		id,
+	)
+	return err
 }
 
 func DeleteUser(ctx context.Context, id int) {
-	rows, _ := db.ConnPool.Query(ctx, "DELETE FROM user WHERE id = $1", id)
-	rows.Close()
+	db.ConnPool.Exec(ctx, "DELETE FROM user WHERE id = $1", id)
 }
