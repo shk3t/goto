@@ -18,7 +18,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func postCreateProject(projectName string) {
+func postCreateProject(c *fiber.Ctx, projectName string) {
 	ctx := context.Background()
 
 	projectPath := filepath.Join(config.MediaPath, projectName)
@@ -31,6 +31,7 @@ func postCreateProject(projectName string) {
 
 	project := model.NewProjectFromConfig(gotoConfig)
 	project.Dir = projectName
+	project.User = *GetCurrentUser(c)
 	if err = query.CreateProject(ctx, project); err != nil {
 		os.RemoveAll(projectPath)
 		return
@@ -56,7 +57,7 @@ func postCreateProject(projectName string) {
 	}
 }
 
-func postCreateProjectZip(projectName string, archivePath string) {
+func postCreateProjectZip(c *fiber.Ctx, projectName string, archivePath string) {
 	if err := utils.Unzip(archivePath, true); err != nil {
 		return
 	}
@@ -64,7 +65,7 @@ func postCreateProjectZip(projectName string, archivePath string) {
 		return
 	}
 
-	postCreateProject(projectName)
+	postCreateProject(c, projectName)
 }
 
 func LoadProject(c *fiber.Ctx) error {
@@ -86,7 +87,7 @@ func LoadProject(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid url")
 		}
 
-		go postCreateProject(projectName)
+		go postCreateProject(c, projectName)
 
 	} else {
 		file, err := c.FormFile("project")
@@ -102,7 +103,7 @@ func LoadProject(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
 
-		go postCreateProjectZip(projectName, archivePath)
+		go postCreateProjectZip(c, projectName, archivePath)
 	}
 
 	return c.SendStatus(fiber.StatusOK)
@@ -116,7 +117,8 @@ func DeleteProject(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
 
-	project, err := query.GetProject(ctx, projectId)
+    user := GetCurrentUser(c)
+	project, err := query.GetUserProject(ctx, projectId, user.Id)
 	if err != nil {
 		return c.Status(404).SendString("Project not found")
 	}

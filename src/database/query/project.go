@@ -14,6 +14,25 @@ func GetProject(ctx context.Context, id int) (*model.Project, error) {
 		ctx, "SELECT * FROM project WHERE id = $1", id,
 	).Scan(
 		&project.Id,
+		&project.User.Id,
+		&project.Dir,
+		&project.Name,
+		&project.Language,
+		&project.Containerization,
+		&project.SrcDir,
+		&project.StubDir,
+	)
+	return &project, err
+}
+
+func GetUserProject(ctx context.Context, id int, userId int) (*model.Project, error) {
+	project := model.Project{}
+	err := db.ConnPool.QueryRow(
+		ctx, "SELECT * FROM project WHERE id = $1 AND user_id = $2",
+		id, userId,
+	).Scan(
+		&project.Id,
+		&project.User.Id,
 		&project.Dir,
 		&project.Name,
 		&project.Language,
@@ -29,12 +48,12 @@ func CreateProject(ctx context.Context, p *model.Project) error {
 	defer tx.Rollback(ctx)
 
 	projectEntries := [][]any{
-		{p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir},
+		{p.User.Id, p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir},
 	}
 	_, err := tx.CopyFrom(
 		ctx,
 		pgx.Identifier{"project"},
-		[]string{"dir", "name", "language", "containerization", "srcdir", "stubdir"},
+		[]string{"user_id", "dir", "name", "language", "containerization", "srcdir", "stubdir"},
 		pgx.CopyFromRows(projectEntries),
 	)
 	if err != nil {
