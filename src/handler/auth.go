@@ -32,17 +32,6 @@ func getJwtToken(user *model.User) (string, error) {
 	return encodedToken, err
 }
 
-// func main() {
-//     password := "secret"
-//     hash, _ := HashPassword(password) // ignore error for the sake of simplicity
-//
-//     fmt.Println("Password:", password)
-//     fmt.Println("Hash:    ", hash)
-//
-//     match := CheckPasswordHash(password, hash)
-//     fmt.Println("Match:   ", match)
-// }
-
 func Register(c *fiber.Ctx) error {
 	ctx := context.Background()
 	user := model.User{}
@@ -52,7 +41,7 @@ func Register(c *fiber.Ctx) error {
 
 	if user.Login == "" || user.Password == "" {
 		return c.Status(fiber.StatusBadRequest).
-			SendString("`login` or `password` are not specified")
+			SendString("Login and password must be provided")
 	}
 	if len(user.Password) < 8 {
 		return c.Status(fiber.StatusBadRequest).SendString("Password is too short")
@@ -75,37 +64,35 @@ func Register(c *fiber.Ctx) error {
 	if err != nil {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
-
 	return c.JSON(fiber.Map{"token": encodedToken})
 }
 
-// func Login(c fiber.Ctx) error {
-// 	user := model.User{}
-// 	c.Bind().Body(&user)
-//
-// 	// Throws Unauthorized error
-// 	if user.Login != "john" || user.Password != "doe" {
-// 		return c.SendStatus(fiber.StatusUnauthorized)
-// 	}
-//
-// 	// Create the Claims
-// 	claims := jwt.MapClaims{
-// 		"name":  "John Doe",
-// 		"admin": true,
-// 		"exp":   time.Now().Add(time.Hour * 72).Unix(),
-// 	}
-//
-// 	// Create token
-// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-//
-// 	// Generate encoded token and send it as response.
-// 	t, err := token.SignedString([]byte(config.SecretKey))
-// 	if err != nil {
-// 		return c.SendStatus(fiber.StatusInternalServerError)
-// 	}
-//
-// 	return c.JSON(fiber.Map{"token": t})
-// }
+func Login(c *fiber.Ctx) error {
+	ctx := context.Background()
+	user := model.User{}
+	if err := c.BodyParser(&user); err != nil {
+		return err
+	}
+
+	if user.Login == "" || user.Password == "" {
+		return c.Status(fiber.StatusBadRequest).
+			SendString("Login and password must be provided")
+	}
+
+	targetUser, err := query.GetUserByLogin(ctx, user.Login)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("Login or password is not valid")
+	}
+	if valid := checkPasswordHash(user.Password, targetUser.Password); !valid {
+		return c.Status(fiber.StatusUnauthorized).SendString("Login or password is not valid")
+	}
+
+	encodedToken, err := getJwtToken(&user)
+	if err != nil {
+		return c.SendStatus(fiber.StatusInternalServerError)
+	}
+	return c.JSON(fiber.Map{"token": encodedToken})
+}
 
 // func restricted(c fiber.Ctx) error {
 // 	user := c.Locals("user").(*jwt.Token)

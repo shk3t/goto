@@ -9,7 +9,15 @@ import (
 func GetUser(ctx context.Context, id int) (*model.User, error) {
 	user := model.User{}
 	err := db.ConnPool.QueryRow(
-		ctx, "SELECT * FROM user WHERE id = $1", id,
+		ctx, "SELECT * FROM \"user\" WHERE id = $1", id,
+	).Scan(&user.Id, &user.Login, &user.Password, &user.IsAdmin)
+	return &user, err
+}
+
+func GetUserByLogin(ctx context.Context, login string) (*model.User, error) {
+	user := model.User{}
+	err := db.ConnPool.QueryRow(
+		ctx, "SELECT * FROM \"user\" WHERE login = $1", login,
 	).Scan(&user.Id, &user.Login, &user.Password, &user.IsAdmin)
 	return &user, err
 }
