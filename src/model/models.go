@@ -7,26 +7,13 @@ type User struct {
 	IsAdmin  bool
 }
 
-type TaskBase struct {
-	Name        string
-	Description string
-	RunTarget   string
-	InjectFiles map[string]string
-}
 type Task struct {
 	TaskBase
-	Id int
+	Id        int `json:"id"`
+	ProjectId int `json:"projectId"`
 }
 type TaskConfig = TaskBase
 
-type ProjectBase struct {
-	Name             string
-	Language         string
-	Modules          []string
-	Containerization string
-	SrcDir           string
-	StubDir          string
-}
 type Project struct {
 	ProjectBase
 	Id    int
@@ -37,4 +24,11 @@ type Project struct {
 type GotoConfig struct {
 	ProjectBase
 	TaskConfigs []TaskConfig
+}
+
+type InjectFile struct {
+	Id     int
+	TaskId int
+	Name   string
+	Path   string
 }

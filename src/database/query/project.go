@@ -2,45 +2,82 @@ package query
 
 import (
 	"context"
+	"errors"
 	db "goto/src/database"
 	"goto/src/model"
+	"goto/src/utils"
 
 	"github.com/jackc/pgx/v5"
 )
 
 func GetProject(ctx context.Context, id int) (*model.Project, error) {
-	project := model.Project{}
-	err := db.ConnPool.QueryRow(
-		ctx, "SELECT * FROM project WHERE id = $1", id,
-	).Scan(
-		&project.Id,
-		&project.User.Id,
-		&project.Dir,
-		&project.Name,
-		&project.Language,
-		&project.Containerization,
-		&project.SrcDir,
-		&project.StubDir,
-	)
-	return &project, err
+	projects, _ := getProjects(ctx, 0, []int{id})
+	if len(projects) == 0 {
+		return nil, errors.New("Not found")
+	}
+	return &projects[0], nil
 }
 
-func GetUserProject(ctx context.Context, id int, userId int) (*model.Project, error) {
-	project := model.Project{}
-	err := db.ConnPool.QueryRow(
-		ctx, "SELECT * FROM project WHERE id = $1 AND user_id = $2",
-		id, userId,
-	).Scan(
-		&project.Id,
-		&project.User.Id,
-		&project.Dir,
-		&project.Name,
-		&project.Language,
-		&project.Containerization,
-		&project.SrcDir,
-		&project.StubDir,
-	)
-	return &project, err
+func GetUserProject(ctx context.Context, userId int, id int) (*model.Project, error) {
+	projects, _ := getProjects(ctx, userId, []int{id})
+	if len(projects) == 0 {
+		return nil, errors.New("Not found")
+	}
+	return &projects[0], nil
+}
+
+func GetUserProjects(ctx context.Context, userId int) ([]model.Project, error) {
+	projects, err := getProjects(ctx, userId, nil)
+	return projects, err
+}
+
+func getProjects(ctx context.Context, userId int, projectIds []int) ([]model.Project, error) {
+	projectsByIds := make(map[int]model.Project)
+
+	query := "SELECT * FROM project WHERE "
+	var params []any
+	if userId != 0 {
+		if projectIds != nil {
+			query += "user_id = $1 AND id = ANY ($2)"
+			params = []any{userId, projectIds}
+		} else {
+			query += "user_id = $1"
+			params = []any{userId}
+		}
+	} else {
+		if projectIds != nil {
+			query += "id = ANY ($2)"
+			params = []any{projectIds}
+		} else {
+			return nil, errors.New("Not supported")
+		}
+	}
+
+	rows, _ := db.ConnPool.Query(ctx, query, params...)
+
+	for rows.Next() {
+		project := model.Project{}
+		rows.Scan(
+			&project.Id,
+			&project.User.Id,
+			&project.Dir,
+			&project.Name,
+			&project.Language,
+			&project.Containerization,
+			&project.SrcDir,
+			&project.StubDir,
+		)
+		projectsByIds[project.Id] = project
+	}
+
+	allTasks, _ := getTasksByProjects(ctx, utils.MapKeys(projectsByIds))
+	for _, t := range allTasks {
+		project := projectsByIds[t.ProjectId]
+		project.Tasks = append(project.Tasks, t)
+		projectsByIds[t.ProjectId] = project
+	}
+
+	return utils.MapValues(projectsByIds), nil
 }
 
 func CreateProject(ctx context.Context, p *model.Project) error {

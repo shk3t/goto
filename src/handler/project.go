@@ -18,6 +18,87 @@ import (
 	"github.com/google/uuid"
 )
 
+func GetProjects(c *fiber.Ctx) error {
+	ctx := context.Background()
+	user := GetCurrentUser(c)
+
+	projects, _ := query.GetUserProjects(ctx, user.Id)
+
+	response := []model.ProjectPublic{}
+	for _, p := range projects {
+		response = append(response, model.ProjectPublic{
+			ProjectBase: p.ProjectBase,
+			Id:          p.Id,
+			Tasks:       p.Tasks,
+		})
+	}
+
+	return c.JSON(response)
+}
+
+func GetProject(c *fiber.Ctx) error {
+	ctx := context.Background()
+	user := GetCurrentUser(c)
+
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
+	}
+
+	project, err := query.GetUserProject(ctx, user.Id, id)
+	if err != nil {
+		return c.Status(404).SendString("Project not found")
+	}
+
+	return c.JSON(model.ProjectPublic{
+		ProjectBase: project.ProjectBase,
+		Id:          project.Id,
+		Tasks:       project.Tasks,
+	})
+}
+
+func LoadProject(c *fiber.Ctx) error {
+	user := GetCurrentUser(c)
+	body := struct{ Url string }{}
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+	}
+
+	postfix := uuid.New().String()
+
+	if body.Url != "" {
+		urlParts := strings.Split(body.Url, "/")
+		repoName := urlParts[len(urlParts)-1]
+		projectName := repoName + "_" + postfix
+
+		gitCloneCmd := exec.Command("git", "clone", body.Url, projectName)
+		gitCloneCmd.Dir = config.MediaPath
+		if err := gitCloneCmd.Run(); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid url")
+		}
+
+		go postCreateProject(user, projectName)
+
+	} else {
+		file, err := c.FormFile("project")
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Use `project` as a key for uploaded file")
+		}
+
+		nameLess, extension := utils.SplitExt(file.Filename)
+		projectName := nameLess + "_" + postfix
+
+		archivePath := filepath.Join(config.MediaPath, projectName+extension)
+		if err = c.SaveFile(file, archivePath); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+
+		go postCreateProjectZip(user, projectName, archivePath)
+	}
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
 func postCreateProject(user *model.User, projectName string) {
 	ctx := context.Background()
 
@@ -68,63 +149,21 @@ func postCreateProjectZip(user *model.User, projectName string, archivePath stri
 	postCreateProject(user, projectName)
 }
 
-func LoadProject(c *fiber.Ctx) error {
-    user := GetCurrentUser(c)
-	body := struct{ Url string }{}
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
-	}
-
-	postfix := uuid.New().String()
-
-	if body.Url != "" {
-		urlParts := strings.Split(body.Url, "/")
-		repoName := urlParts[len(urlParts)-1]
-		projectName := repoName + "_" + postfix
-
-		gitCloneCmd := exec.Command("git", "clone", body.Url, projectName)
-		gitCloneCmd.Dir = config.MediaPath
-		if err := gitCloneCmd.Run(); err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid url")
-		}
-
-		go postCreateProject(user, projectName)
-
-	} else {
-		file, err := c.FormFile("project")
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Use `project` as a key for uploaded file")
-		}
-
-		nameLess, extension := utils.SplitExt(file.Filename)
-		projectName := nameLess + "_" + postfix
-
-		archivePath := filepath.Join(config.MediaPath, projectName+extension)
-		if err = c.SaveFile(file, archivePath); err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
-		}
-
-		go postCreateProjectZip(user, projectName, archivePath)
-	}
-
-	return c.SendStatus(fiber.StatusOK)
-}
-
 func DeleteProject(c *fiber.Ctx) error {
 	ctx := context.Background()
 
-	projectId, err := strconv.Atoi(c.Params("id"))
+	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
 
 	user := GetCurrentUser(c)
-	project, err := query.GetUserProject(ctx, projectId, user.Id)
+	project, err := query.GetUserProject(ctx, id, user.Id)
 	if err != nil {
 		return c.Status(404).SendString("Project not found")
 	}
 
-	query.DeleteProject(ctx, projectId)
+	query.DeleteProject(ctx, id)
 
 	projectPath := filepath.Join(config.MediaPath, project.Dir)
 	os.RemoveAll(projectPath)
