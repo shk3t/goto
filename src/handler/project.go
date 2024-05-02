@@ -18,7 +18,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func postCreateProject(c *fiber.Ctx, projectName string) {
+func postCreateProject(user *model.User, projectName string) {
 	ctx := context.Background()
 
 	projectPath := filepath.Join(config.MediaPath, projectName)
@@ -31,7 +31,7 @@ func postCreateProject(c *fiber.Ctx, projectName string) {
 
 	project := model.NewProjectFromConfig(gotoConfig)
 	project.Dir = projectName
-	project.User = *GetCurrentUser(c)
+	project.User = *user
 	if err = query.CreateProject(ctx, project); err != nil {
 		os.RemoveAll(projectPath)
 		return
@@ -57,7 +57,7 @@ func postCreateProject(c *fiber.Ctx, projectName string) {
 	}
 }
 
-func postCreateProjectZip(c *fiber.Ctx, projectName string, archivePath string) {
+func postCreateProjectZip(user *model.User, projectName string, archivePath string) {
 	if err := utils.Unzip(archivePath, true); err != nil {
 		return
 	}
@@ -65,13 +65,14 @@ func postCreateProjectZip(c *fiber.Ctx, projectName string, archivePath string) 
 		return
 	}
 
-	postCreateProject(c, projectName)
+	postCreateProject(user, projectName)
 }
 
 func LoadProject(c *fiber.Ctx) error {
+    user := GetCurrentUser(c)
 	body := struct{ Url string }{}
 	if err := c.BodyParser(&body); err != nil {
-		return err
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
 	postfix := uuid.New().String()
@@ -87,7 +88,7 @@ func LoadProject(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid url")
 		}
 
-		go postCreateProject(c, projectName)
+		go postCreateProject(user, projectName)
 
 	} else {
 		file, err := c.FormFile("project")
@@ -103,7 +104,7 @@ func LoadProject(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
 
-		go postCreateProjectZip(c, projectName, archivePath)
+		go postCreateProjectZip(user, projectName, archivePath)
 	}
 
 	return c.SendStatus(fiber.StatusOK)
@@ -117,7 +118,7 @@ func DeleteProject(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
 
-    user := GetCurrentUser(c)
+	user := GetCurrentUser(c)
 	project, err := query.GetUserProject(ctx, projectId, user.Id)
 	if err != nil {
 		return c.Status(404).SendString("Project not found")
