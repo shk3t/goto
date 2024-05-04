@@ -10,27 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func GetProject(ctx context.Context, id int) (*model.Project, error) {
-	projects, _ := getProjects(ctx, 0, []int{id})
-	if len(projects) == 0 {
-		return nil, errors.New("Not found")
-	}
-	return &projects[0], nil
-}
-
-func GetUserProject(ctx context.Context, userId int, id int) (*model.Project, error) {
-	projects, _ := getProjects(ctx, userId, []int{id})
-	if len(projects) == 0 {
-		return nil, errors.New("Not found")
-	}
-	return &projects[0], nil
-}
-
-func GetUserProjects(ctx context.Context, userId int) ([]model.Project, error) {
-	projects, err := getProjects(ctx, userId, nil)
-	return projects, err
-}
-
 func getProjects(ctx context.Context, userId int, projectIds []int) ([]model.Project, error) {
 	projectsByIds := make(map[int]model.Project)
 
@@ -70,7 +49,7 @@ func getProjects(ctx context.Context, userId int, projectIds []int) ([]model.Pro
 		projectsByIds[project.Id] = project
 	}
 
-	allTasks, _ := getTasksByProjects(ctx, utils.MapKeys(projectsByIds))
+	allTasks := getTasksByProjects(ctx, utils.MapKeys(projectsByIds))
 	for _, t := range allTasks {
 		project := projectsByIds[t.ProjectId]
 		project.Tasks = append(project.Tasks, t)
@@ -78,6 +57,27 @@ func getProjects(ctx context.Context, userId int, projectIds []int) ([]model.Pro
 	}
 
 	return utils.MapValues(projectsByIds), nil
+}
+
+func GetProject(ctx context.Context, id int) (*model.Project, error) {
+	projects, _ := getProjects(ctx, 0, []int{id})
+	if len(projects) == 0 {
+		return nil, errors.New("Not found")
+	}
+	return &projects[0], nil
+}
+
+func GetUserProject(ctx context.Context, userId int, id int) (*model.Project, error) {
+	projects, _ := getProjects(ctx, userId, []int{id})
+	if len(projects) == 0 {
+		return nil, errors.New("Not found")
+	}
+	return &projects[0], nil
+}
+
+func GetUserProjects(ctx context.Context, userId int) ([]model.Project, error) {
+	projects, err := getProjects(ctx, userId, nil)
+	return projects, err
 }
 
 func CreateProject(ctx context.Context, p *model.Project) error {
