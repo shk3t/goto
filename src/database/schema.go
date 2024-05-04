@@ -47,7 +47,7 @@ func InitSchema(ctx context.Context) {
             UNIQUE(project_id, name)
         )`,
 		`
-        CREATE TABLE IF NOT EXISTS injectfile (
+        CREATE TABLE IF NOT EXISTS task_file (
             id SERIAL PRIMARY KEY,
             task_id INTEGER NOT NULL REFERENCES task(id) ON DELETE CASCADE,
             name VARCHAR(64) NOT NULL,
@@ -61,9 +61,16 @@ func InitSchema(ctx context.Context) {
             user_id INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
             task_id INTEGER NOT NULL REFERENCES task(id) ON DELETE CASCADE,
             status VARCHAR(64) NOT NULL,
-            code TEXT NOT NULL,
             result TEXT,
             updated_at TIMESTAMP DEFAULT NOW()
+        )`,
+		`
+        CREATE TABLE IF NOT EXISTS solution_file (
+            id SERIAL PRIMARY KEY,
+            solution_id INTEGER NOT NULL REFERENCES solution(id) ON DELETE CASCADE,
+            name VARCHAR(64) NOT NULL,
+            code TEXT NOT NULL,
+            UNIQUE(solution_id, name)
         )`,
 	}
 

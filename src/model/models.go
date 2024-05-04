@@ -3,13 +3,19 @@ package model
 import "time"
 
 type Solution struct {
-	Id        int       `json:"id"`
-	UserId    int       `json:"userId"`
-	TaskId    int       `json:"taskId"`
-	Status    string    `json:"status"`
-	Code      string    `json:"code"`
-	Result    string    `json:"result"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	SolutionBase
+	Id        int               `json:"id"`
+	UserId    int               `json:"userId"`
+	Status    string            `json:"status"`
+	Result    string            `json:"result"`
+	UpdatedAt time.Time         `json:"updatedAt"`
+}
+
+type SolutionFile struct {
+	Id         int
+	SolutionId int
+	Name       string
+	Code       string
 }
 
 type User struct {
@@ -38,7 +44,7 @@ type GotoConfig struct {
 	TaskConfigs []TaskConfig
 }
 
-type InjectFile struct {
+type TaskFile struct {
 	Id     int
 	TaskId int
 	Name   string

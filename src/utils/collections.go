@@ -8,6 +8,20 @@ func UniqueOnly[T comparable](data *[]T) bool {
 	return len(uniqueValues) == len(*data)
 }
 
+func Difference(left []string, right []string) []string {
+	rightMap := make(map[string]struct{}, len(right))
+	for _, x := range right {
+		rightMap[x] = struct{}{}
+	}
+	diff := []string{}
+	for _, x := range left {
+		if _, found := rightMap[x]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
+}
+
 func GetAssertDefault[T any](data map[string]any, key string, defaultValue T) T {
 	value, ok := data[key]
 	if ok {

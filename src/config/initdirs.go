@@ -2,6 +2,7 @@ package config
 
 import "os"
 
-func InitDirs()  {
-    os.Mkdir("media", os.ModePerm)
+func InitDirs() {
+	os.Mkdir(MediaPath, os.ModePerm)
+	os.Mkdir(TempPath, os.ModePerm)
 }

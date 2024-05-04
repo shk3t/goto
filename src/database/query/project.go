@@ -130,12 +130,12 @@ func CreateProject(ctx context.Context, p *model.Project) error {
 		return err
 	}
 
-	injectFilesByTaskName := map[string]model.Task{}
+	taskFilesByTaskName := map[string]model.Task{}
 	for _, t := range p.Tasks {
-		injectFilesByTaskName[t.Name] = t
+		taskFilesByTaskName[t.Name] = t
 	}
 
-    injectFileEntries := [][]any{}
+    taskFileEntries := [][]any{}
 	rows, err := tx.Query(ctx, "SELECT id, name FROM task WHERE project_id = $1", projectId)
 	for rows.Next() {
 		var taskId int
@@ -145,17 +145,17 @@ func CreateProject(ctx context.Context, p *model.Project) error {
 			return err
 		}
 
-		task := injectFilesByTaskName[taskName]
-		for name, path := range task.InjectFiles {
-			injectFileEntries = append(injectFileEntries, []any{taskId, name, path})
+		task := taskFilesByTaskName[taskName]
+		for name, path := range task.Files {
+			taskFileEntries = append(taskFileEntries, []any{taskId, name, path})
 		}
 	}
 
 	_, err = tx.CopyFrom(
 		ctx,
-		pgx.Identifier{"injectfile"},
+		pgx.Identifier{"task_file"},
 		[]string{"task_id", "name", "path"},
-		pgx.CopyFromRows(injectFileEntries),
+		pgx.CopyFromRows(taskFileEntries),
 	)
 	if err != nil {
 		return err

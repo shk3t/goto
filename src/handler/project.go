@@ -7,6 +7,7 @@ import (
 	"goto/src/database/query"
 	"goto/src/model"
 	"goto/src/utils"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -24,7 +25,7 @@ func GetProjects(c *fiber.Ctx) error {
 
 	projects := query.GetUserProjects(ctx, user.Id)
 
-    response := []model.ProjectPublic{}
+	response := []model.ProjectPublic{}
 	for _, p := range projects {
 		response = append(response, model.ProjectPublic{
 			ProjectBase: p.ProjectBase,
@@ -80,9 +81,9 @@ func LoadProject(c *fiber.Ctx) error {
 		go postCreateProject(user, projectName)
 
 	} else {
-		file, err := c.FormFile("project")
+		file, err := c.FormFile("file")
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Use `project` as a key for uploaded file")
+			return c.Status(fiber.StatusBadRequest).SendString("Use `file` as a key for uploaded file")
 		}
 
 		nameLess, extension := utils.SplitExt(file.Filename)
@@ -106,6 +107,7 @@ func postCreateProject(user *model.User, projectName string) {
 	gotoConfigPath := filepath.Join(projectPath, config.GotoConfigName)
 	gotoConfig, err := model.LoadGotoConfig(gotoConfigPath)
 	if err != nil {
+		log.Println(err)
 		os.RemoveAll(projectPath)
 		return
 	}
@@ -114,6 +116,7 @@ func postCreateProject(user *model.User, projectName string) {
 	project.Dir = projectName
 	project.User = *user
 	if err = query.CreateProject(ctx, project); err != nil {
+		log.Println(err)
 		os.RemoveAll(projectPath)
 		return
 	}
@@ -132,17 +135,26 @@ func postCreateProject(user *model.User, projectName string) {
 	buildCmd.Dir = projectPath
 	err = buildCmd.Run()
 	if err != nil {
+		log.Println(err)
 		query.DeleteProject(ctx, project.Id)
 		os.RemoveAll(projectPath)
 		return
 	}
+
+	// for _, task := range project.Tasks {
+	// 	for _, taskFilePath := range task.Files {
+	// 		os.Remove(filepath.Join(project.Dir, project.SrcDir, taskFilePath))
+	// 	}
+	// }
 }
 
 func postCreateProjectZip(user *model.User, projectName string, archivePath string) {
 	if err := utils.Unzip(archivePath, true); err != nil {
+		log.Println(err)
 		return
 	}
 	if err := os.Remove(archivePath); err != nil {
+		log.Println(err)
 		return
 	}
 
@@ -177,10 +189,17 @@ func DeleteProject(c *fiber.Ctx) error {
 		exec.Command("docker", "image", "remove", "-f", project.Dir).Run()
 		exec.Command("docker", "system", "prune", "-f").Run()
 	case "docker-compose":
-		removeCmd := exec.Command("docker", "compose", "remove", "-fsv")
+		removeCmd := exec.Command(
+			"docker",
+			"compose",
+			"down",
+			"--rmi",
+			"all",
+			"-v",
+			"--remove-orphans",
+		)
 		removeCmd.Dir = config.MediaPath
 		removeCmd.Run()
-		exec.Command("docker", "system", "prune", "-f").Run()
 	}
 
 	return c.SendStatus(fiber.StatusOK)
