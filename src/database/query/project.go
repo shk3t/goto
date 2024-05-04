@@ -2,7 +2,6 @@ package query
 
 import (
 	"context"
-	"errors"
 	db "goto/src/database"
 	"goto/src/model"
 	"goto/src/utils"
@@ -10,74 +9,74 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func getProjects(ctx context.Context, userId int, projectIds []int) ([]model.Project, error) {
-	projectsByIds := make(map[int]model.Project)
-
-	query := "SELECT * FROM project WHERE "
-	var params []any
-	if userId != 0 {
-		if projectIds != nil {
-			query += "user_id = $1 AND id = ANY ($2)"
-			params = []any{userId, projectIds}
-		} else {
-			query += "user_id = $1"
-			params = []any{userId}
-		}
-	} else {
-		if projectIds != nil {
-			query += "id = ANY ($2)"
-			params = []any{projectIds}
-		} else {
-			return nil, errors.New("Not supported")
-		}
+func readProjectRow(row Scanable) *model.Project {
+	project := model.Project{}
+	err := row.Scan(
+		&project.Id,
+		&project.User.Id,
+		&project.Dir,
+		&project.Name,
+		&project.Language,
+		&project.Containerization,
+		&project.SrcDir,
+		&project.StubDir,
+	)
+	if err != nil {
+		return nil
 	}
+	return &project
+}
 
-	rows, _ := db.ConnPool.Query(ctx, query, params...)
-
+func readProjectRows(rows pgx.Rows) map[int]model.Project {
+	projectsByIds := map[int]model.Project{}
 	for rows.Next() {
-		project := model.Project{}
-		rows.Scan(
-			&project.Id,
-			&project.User.Id,
-			&project.Dir,
-			&project.Name,
-			&project.Language,
-			&project.Containerization,
-			&project.SrcDir,
-			&project.StubDir,
-		)
-		projectsByIds[project.Id] = project
+		project := readProjectRow(rows)
+		projectsByIds[project.Id] = *project
+	}
+	return projectsByIds
+}
+
+func readProjectRowThenExtend(ctx context.Context, row pgx.Row) *model.Project {
+	project := readProjectRow(row)
+	if project == nil {
+		return nil
 	}
 
+	tasks := getTasksByProjects(ctx, []int{project.Id})
+	for _, t := range tasks {
+		project.Tasks = append(project.Tasks, t)
+	}
+	return project
+}
+
+func readProjectRowsThenExtend(ctx context.Context, rows pgx.Rows) []model.Project {
+	projectsByIds := readProjectRows(rows)
 	allTasks := getTasksByProjects(ctx, utils.MapKeys(projectsByIds))
 	for _, t := range allTasks {
 		project := projectsByIds[t.ProjectId]
 		project.Tasks = append(project.Tasks, t)
 		projectsByIds[t.ProjectId] = project
 	}
-
-	return utils.MapValues(projectsByIds), nil
+	return utils.MapValues(projectsByIds)
 }
 
-func GetProject(ctx context.Context, id int) (*model.Project, error) {
-	projects, _ := getProjects(ctx, 0, []int{id})
-	if len(projects) == 0 {
-		return nil, errors.New("Not found")
-	}
-	return &projects[0], nil
+func GetProject(ctx context.Context, id int) *model.Project {
+	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM project WHERE id = $1", id)
+	return readProjectRowThenExtend(ctx, row)
 }
 
-func GetUserProject(ctx context.Context, userId int, id int) (*model.Project, error) {
-	projects, _ := getProjects(ctx, userId, []int{id})
-	if len(projects) == 0 {
-		return nil, errors.New("Not found")
-	}
-	return &projects[0], nil
+func GetUserProject(ctx context.Context, id int, userId int) *model.Project {
+	row := db.ConnPool.QueryRow(
+		ctx,
+		"SELECT * FROM project WHERE id = $1 and user_id = $2",
+		id, userId,
+	)
+	return readProjectRowThenExtend(ctx, row)
 }
 
-func GetUserProjects(ctx context.Context, userId int) ([]model.Project, error) {
-	projects, err := getProjects(ctx, userId, nil)
-	return projects, err
+func GetUserProjects(ctx context.Context, userId int) []model.Project {
+	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM project WHERE user_id = $1", userId)
+	return readProjectRowsThenExtend(ctx, rows)
 }
 
 func CreateProject(ctx context.Context, p *model.Project) error {
@@ -131,7 +130,7 @@ func CreateProject(ctx context.Context, p *model.Project) error {
 		return err
 	}
 
-	injectFilesByTaskName := make(map[string]model.Task)
+	injectFilesByTaskName := map[string]model.Task{}
 	for _, t := range p.Tasks {
 		injectFilesByTaskName[t.Name] = t
 	}

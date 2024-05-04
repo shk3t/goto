@@ -22,7 +22,7 @@ func GetProjects(c *fiber.Ctx) error {
 	ctx := context.Background()
 	user := GetCurrentUser(c)
 
-	projects, _ := query.GetUserProjects(ctx, user.Id)
+	projects := query.GetUserProjects(ctx, user.Id)
 
 	response := []model.ProjectPublic{}
 	for _, p := range projects {
@@ -45,8 +45,8 @@ func GetProject(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
 
-	project, err := query.GetUserProject(ctx, user.Id, id)
-	if err != nil {
+	project := query.GetUserProject(ctx, user.Id, id)
+	if project == nil {
 		return c.Status(404).SendString("Project not found")
 	}
 
@@ -158,8 +158,8 @@ func DeleteProject(c *fiber.Ctx) error {
 	}
 
 	user := GetCurrentUser(c)
-	project, err := query.GetUserProject(ctx, id, user.Id)
-	if err != nil {
+	project := query.GetUserProject(ctx, id, user.Id)
+	if project == nil {
 		return c.Status(404).SendString("Project not found")
 	}
 

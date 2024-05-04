@@ -9,13 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type Scanable interface {
-	Scan(dest ...any) error
-}
-
-func readTaskRow(row Scanable) (*model.Task, error) {
+func readTaskRow(row Scanable) *model.Task {
 	task := model.Task{}
-	task.InjectFiles = make(map[string]string)
+	task.InjectFiles = map[string]string{}
 	err := row.Scan(
 		&task.Id,
 		&task.ProjectId,
@@ -23,16 +19,41 @@ func readTaskRow(row Scanable) (*model.Task, error) {
 		&task.Description,
 		&task.RunTarget,
 	)
-	return &task, err
+	if err != nil {
+		return nil
+	}
+	return &task
 }
 
 func readTaskRows(rows pgx.Rows) map[int]model.Task {
-	tasksByIds := make(map[int]model.Task)
+	tasksByIds := map[int]model.Task{}
 	for rows.Next() {
-		task, _ := readTaskRow(rows)
+		task := readTaskRow(rows)
 		tasksByIds[task.Id] = *task
 	}
 	return tasksByIds
+}
+
+func readTaskRowThenExtend(ctx context.Context, row pgx.Row) *model.Task {
+	task := readTaskRow(row)
+	if task == nil {
+		return nil
+	}
+
+	injectFiles := getInjectFilesByTasks(ctx, []int{task.Id})
+	for _, ifl := range injectFiles {
+		task.InjectFiles[ifl.Name] = ifl.Path
+	}
+	return task
+}
+
+func readTaskRowsThenExtend(ctx context.Context, rows pgx.Rows) []model.Task {
+	tasksByIds := readTaskRows(rows)
+	allInjectFiles := getInjectFilesByTasks(ctx, utils.MapKeys(tasksByIds))
+	for _, ifl := range allInjectFiles {
+		tasksByIds[ifl.TaskId].InjectFiles[ifl.Name] = ifl.Path
+	}
+	return utils.MapValues(tasksByIds)
 }
 
 func getTasksByProjects(ctx context.Context, projectIds []int) []model.Task {
@@ -41,25 +62,22 @@ func getTasksByProjects(ctx context.Context, projectIds []int) []model.Task {
 		"SELECT * FROM task WHERE project_id = ANY ($1)",
 		projectIds,
 	)
-
-	tasksByIds := readTaskRows(rows)
-	extendTasksWithInjectFiles(ctx, tasksByIds)
-
-	return utils.MapValues(tasksByIds)
+	return readTaskRowsThenExtend(ctx, rows)
 }
 
-func extendTaskWithInjectFiles(ctx context.Context, task *model.Task) {
-	injectFiles := getInjectFilesByTasks(ctx, []int{task.Id})
-	for _, ifl := range injectFiles {
-		task.InjectFiles[ifl.Name] = ifl.Path
-	}
+func GetTask(ctx context.Context, id int) *model.Task {
+	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM task WHERE id = $1", id)
+	return readTaskRowThenExtend(ctx, row)
 }
 
-func extendTasksWithInjectFiles(ctx context.Context, tasksByIds map[int]model.Task) {
-	allInjectFiles := getInjectFilesByTasks(ctx, utils.MapKeys(tasksByIds))
-	for _, ifl := range allInjectFiles {
-		tasksByIds[ifl.TaskId].InjectFiles[ifl.Name] = ifl.Path
-	}
+func GetUserTasks(ctx context.Context, userId int) []model.Task {
+	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM task WHERE user_id = $1", userId)
+	return readTaskRowsThenExtend(ctx, rows)
+}
+
+func GetAllTasks(ctx context.Context) []model.Task {
+	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM task")
+	return readTaskRowsThenExtend(ctx, rows)
 }
 
 func getInjectFilesByTasks(ctx context.Context, taskIds []int) []model.InjectFile {
@@ -78,30 +96,4 @@ func getInjectFilesByTasks(ctx context.Context, taskIds []int) []model.InjectFil
 	}
 
 	return allInjectFiles
-}
-
-func GetTask(ctx context.Context, id int) (*model.Task, error) {
-	row := db.ConnPool.QueryRow(
-		ctx, "SELECT * FROM task WHERE id = $1", id,
-	)
-	task, err := readTaskRow(row)
-	if err != nil {
-		return nil, err
-	}
-	extendTaskWithInjectFiles(ctx, task)
-	return task, nil
-}
-
-func GetUserTasks(ctx context.Context, userId int) []model.Task {
-	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM task WHERE user_id = $1", userId)
-	tasksByIds := readTaskRows(rows)
-	extendTasksWithInjectFiles(ctx, tasksByIds)
-	return utils.MapValues(tasksByIds)
-}
-
-func GetAllTasks(ctx context.Context) []model.Task {
-	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM task")
-	tasksByIds := readTaskRows(rows)
-	extendTasksWithInjectFiles(ctx, tasksByIds)
-	return utils.MapValues(tasksByIds)
 }

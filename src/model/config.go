@@ -40,7 +40,7 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 		taskNames[i] = tc["name"].(string)
 
 		injectFiles := tc["injectfiles"].(any)
-		cfg.TaskConfigs[i].InjectFiles = make(map[string]string)
+		cfg.TaskConfigs[i].InjectFiles = map[string]string{}
 
 		switch injectFiles.(type) {
 		case []any:

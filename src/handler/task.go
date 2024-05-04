@@ -33,8 +33,8 @@ func GetTask(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
 
-	task, err := query.GetTask(ctx, id)
-	if err != nil {
+	task := query.GetTask(ctx, id)
+	if task == nil {
 		return c.Status(404).SendString("Task not found")
 	}
 
