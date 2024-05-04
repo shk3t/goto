@@ -24,7 +24,7 @@ func GetProjects(c *fiber.Ctx) error {
 
 	projects := query.GetUserProjects(ctx, user.Id)
 
-	response := []model.ProjectPublic{}
+    response := []model.ProjectPublic{}
 	for _, p := range projects {
 		response = append(response, model.ProjectPublic{
 			ProjectBase: p.ProjectBase,
@@ -45,7 +45,7 @@ func GetProject(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
 
-	project := query.GetUserProject(ctx, user.Id, id)
+	project := query.GetUserProject(ctx, id, user.Id)
 	if project == nil {
 		return c.Status(404).SendString("Project not found")
 	}
@@ -147,6 +147,10 @@ func postCreateProjectZip(user *model.User, projectName string, archivePath stri
 	}
 
 	postCreateProject(user, projectName)
+}
+
+func UpdateProject(c *fiber.Ctx) error {
+	return errors.New("TODO")
 }
 
 func DeleteProject(c *fiber.Ctx) error {

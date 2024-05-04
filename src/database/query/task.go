@@ -81,7 +81,7 @@ func GetAllTasks(ctx context.Context) []model.Task {
 }
 
 func getInjectFilesByTasks(ctx context.Context, taskIds []int) []model.InjectFile {
-	var allInjectFiles []model.InjectFile
+    allInjectFiles := []model.InjectFile{}
 
 	rows, _ := db.ConnPool.Query(
 		ctx,

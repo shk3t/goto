@@ -19,15 +19,17 @@ func SetupRoutes(app *fiber.App) {
 		SigningKey: jwtware.SigningKey{Key: []byte(config.SecretKey)},
 	}))
 
-	api.Post("/projects", handler.LoadProject)
-	api.Delete("/projects/:id", handler.DeleteProject)
-
 	api.Get("/projects", handler.GetProjects)
-    api.Get("/projects/:id", handler.GetProject)
+	api.Get("/projects/:id", handler.GetProject)
 
 	api.Get("/tasks", handler.GetTasks)
-    api.Get("/tasks/:id", handler.GetTask)
+	api.Get("/tasks/:id", handler.GetTask)
 
 	api.Get("/solutions", handler.GetSolutions)
-    api.Get("/solutions/:id", handler.GetSolution)
+	api.Get("/solutions/:id", handler.GetSolution)
+
+	api.Post("/projects", handler.LoadProject)
+	api.Put("/projects", handler.UpdateProject)
+	api.Delete("/projects/:id", handler.DeleteProject)
+	api.Post("/solutions", handler.SubmitSolution)
 }

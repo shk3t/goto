@@ -135,7 +135,7 @@ func CreateProject(ctx context.Context, p *model.Project) error {
 		injectFilesByTaskName[t.Name] = t
 	}
 
-	injectFileEntries := [][]any{}
+    injectFileEntries := [][]any{}
 	rows, err := tx.Query(ctx, "SELECT id, name FROM task WHERE project_id = $1", projectId)
 	for rows.Next() {
 		var taskId int

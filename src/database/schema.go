@@ -62,7 +62,7 @@ func InitSchema(ctx context.Context) {
             task_id INTEGER NOT NULL REFERENCES task(id) ON DELETE CASCADE,
             status VARCHAR(64) NOT NULL,
             code TEXT NOT NULL,
-            respone TEXT,
+            result TEXT,
             updated_at TIMESTAMP DEFAULT NOW()
         )`,
 	}

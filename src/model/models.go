@@ -1,5 +1,17 @@
 package model
 
+import "time"
+
+type Solution struct {
+	Id        int       `json:"id"`
+	UserId    int       `json:"userId"`
+	TaskId    int       `json:"taskId"`
+	Status    string    `json:"status"`
+	Code      string    `json:"code"`
+	Result    string    `json:"result"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 type User struct {
 	Id       int
 	Login    string

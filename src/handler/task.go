@@ -15,7 +15,7 @@ func GetTasks(c *fiber.Ctx) error {
 
 	my, _ := strconv.ParseBool(c.Query("my"))
 
-	var tasks []model.Task
+    tasks := []model.Task{}
 	if my {
 		tasks = query.GetUserTasks(ctx, user.Id)
 	} else {
