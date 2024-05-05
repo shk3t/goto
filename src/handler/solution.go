@@ -2,12 +2,20 @@ package handler
 
 import (
 	"context"
+	"goto/src/config"
 	"goto/src/database/query"
 	"goto/src/model"
 	"goto/src/utils"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
+	"time"
+
+	cp "github.com/otiai10/copy"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 func GetSolutions(c *fiber.Ctx) error {
@@ -56,5 +64,59 @@ func SubmitSolution(c *fiber.Ctx) error {
 			JSON(fiber.Map{"error": "Missing files", "details": missingFileNames})
 	}
 
-	return c.SendString("OK")
+	project := query.GetProjectShallow(ctx, task.ProjectId)
+	tempDir := uuid.New().String()
+	projectTempPath := filepath.Join(config.TempPath, tempDir)
+	projectPath := filepath.Join(config.MediaPath, project.Dir)
+	cp.Copy(projectPath, projectTempPath)
+	defer os.RemoveAll(projectTempPath)
+
+	srcPath := filepath.Join(projectTempPath, project.SrcDir)
+	for taskFileName, taskFilePath := range task.Files {
+		path := filepath.Join(srcPath, taskFilePath)
+		code := solution.Files[taskFileName]
+		os.WriteFile(path, []byte(code), os.ModePerm)
+	}
+
+	var result string
+	switch project.Containerization {
+	case "docker":
+		buildCmd := exec.Command("docker", "build", "-q", projectTempPath)
+		tempImage, _ := buildCmd.Output()
+		runCmd := exec.Command("docker", "run", "--rm", "-t", string(tempImage))
+		output, _ := runCmd.Output()
+		result = string(output)
+
+		// TODO
+
+		exec.Command("docker", "system", "prune", "-f").Run()
+	case "docker-compose":
+		upCmd := exec.Command("docker", "compose", "up", "--build", "--abort-on-container-exit")
+		upCmd.Env = append(upCmd.Env, "TARGET="+task.RunTarget)
+		upCmd.Dir = projectTempPath
+		output, _ := upCmd.Output()
+
+		result = utils.ParseComposeOutput(output, project.Dir)
+
+		downCmd := exec.Command(
+			"docker",
+			"compose",
+			"down",
+			"--rmi",
+			"local",
+			"-v",
+			"--remove-orphans",
+		)
+		downCmd.Dir = projectTempPath
+		downCmd.Run()
+		exec.Command("docker", "system", "prune", "-f").Run()
+	}
+
+	return c.JSON(model.Solution{
+		SolutionBase: solution,
+		UserId:       user.Id,
+		Status:       utils.ParseStatus(result),
+		Result:       result,
+		UpdatedAt:    time.Now(),
+	})
 }

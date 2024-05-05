@@ -65,6 +65,11 @@ func GetProject(ctx context.Context, id int) *model.Project {
 	return readProjectRowThenExtend(ctx, row)
 }
 
+func GetProjectShallow(ctx context.Context, id int) *model.Project {
+	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM project WHERE id = $1", id)
+	return readProjectRow(row)
+}
+
 func GetUserProject(ctx context.Context, id int, userId int) *model.Project {
 	row := db.ConnPool.QueryRow(
 		ctx,
@@ -135,7 +140,7 @@ func CreateProject(ctx context.Context, p *model.Project) error {
 		taskFilesByTaskName[t.Name] = t
 	}
 
-    taskFileEntries := [][]any{}
+	taskFileEntries := [][]any{}
 	rows, err := tx.Query(ctx, "SELECT id, name FROM task WHERE project_id = $1", projectId)
 	for rows.Next() {
 		var taskId int

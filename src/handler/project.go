@@ -121,31 +121,31 @@ func postCreateProject(user *model.User, projectName string) {
 		return
 	}
 
-	var buildCmd *exec.Cmd
+	var prepareCmds []*exec.Cmd
 	switch gotoConfig.Containerization {
 	case "docker":
-		buildCmd = exec.Command("docker", "buildx", "build", "-t", projectName, ".")
+		prepareCmds = []*exec.Cmd{
+			exec.Command("docker", "buildx", "build", "-t", projectName, "."),
+		}
 	case "docker-compose":
-		buildCmd = exec.Command("docker", "compose", "build")
+		prepareCmds = []*exec.Cmd{
+			exec.Command("docker", "compose", "pull"),
+			exec.Command("docker", "compose", "build"),
+		}
 	default:
 		err = errors.New("Specified containerization type is not implemented")
 		return
 	}
 
-	buildCmd.Dir = projectPath
-	err = buildCmd.Run()
-	if err != nil {
-		log.Println(err)
-		query.DeleteProject(ctx, project.Id)
-		os.RemoveAll(projectPath)
-		return
+	for _, cmd := range prepareCmds {
+		cmd.Dir = projectPath
+		if err = cmd.Run(); err != nil {
+			log.Println(err)
+			query.DeleteProject(ctx, project.Id)
+			os.RemoveAll(projectPath)
+			return
+		}
 	}
-
-	// for _, task := range project.Tasks {
-	// 	for _, taskFilePath := range task.Files {
-	// 		os.Remove(filepath.Join(project.Dir, project.SrcDir, taskFilePath))
-	// 	}
-	// }
 }
 
 func postCreateProjectZip(user *model.User, projectName string, archivePath string) {
@@ -178,11 +178,9 @@ func DeleteProject(c *fiber.Ctx) error {
 	if project == nil {
 		return c.Status(404).SendString("Project not found")
 	}
+	projectPath := filepath.Join(config.MediaPath, project.Dir)
 
 	query.DeleteProject(ctx, id)
-
-	projectPath := filepath.Join(config.MediaPath, project.Dir)
-	os.RemoveAll(projectPath)
 
 	switch project.Containerization {
 	case "docker":
@@ -198,9 +196,12 @@ func DeleteProject(c *fiber.Ctx) error {
 			"-v",
 			"--remove-orphans",
 		)
-		removeCmd.Dir = config.MediaPath
+		removeCmd.Dir = projectPath
 		removeCmd.Run()
+		exec.Command("docker", "system", "prune", "-f").Run()
 	}
+
+	os.RemoveAll(projectPath)
 
 	return c.SendStatus(fiber.StatusOK)
 }
