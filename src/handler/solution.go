@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	s "strings"
 	"time"
 
 	cp "github.com/otiai10/copy"
@@ -83,21 +84,24 @@ func SubmitSolution(c *fiber.Ctx) error {
 	case "docker":
 		buildCmd := exec.Command("docker", "build", "-q", projectTempPath)
 		tempImage, _ := buildCmd.Output()
-		runCmd := exec.Command("docker", "run", "--rm", "-t", string(tempImage))
+		runCmd := exec.Command(
+			"docker",
+			"run",
+			"-e",
+			"TARGET="+task.RunTarget,
+			"--rm",
+			"-t",
+			s.TrimSuffix(string(tempImage), "\n"),
+		)
 		output, _ := runCmd.Output()
 		result = string(output)
-
-		// TODO
-
 		exec.Command("docker", "system", "prune", "-f").Run()
 	case "docker-compose":
 		upCmd := exec.Command("docker", "compose", "up", "--build", "--abort-on-container-exit")
 		upCmd.Env = append(upCmd.Env, "TARGET="+task.RunTarget)
 		upCmd.Dir = projectTempPath
 		output, _ := upCmd.Output()
-
 		result = utils.ParseComposeOutput(output, project.Dir)
-
 		downCmd := exec.Command(
 			"docker",
 			"compose",
