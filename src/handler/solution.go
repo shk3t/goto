@@ -21,7 +21,8 @@ import (
 func GetSolutions(c *fiber.Ctx) error {
 	ctx := context.Background()
 	user := GetCurrentUser(c)
-	solutions := query.GetUserSolutions(ctx, user.Id)
+	pager := utils.NewPager(c)
+	solutions := query.GetUserSolutions(ctx, user.Id, pager)
 	return c.JSON(solutions)
 }
 

@@ -75,13 +75,17 @@ func GetTaskWithStubs(ctx context.Context, id int) *model.Task {
 	return readTaskRowThenExtend(ctx, row)
 }
 
-func GetUserTasks(ctx context.Context, userId int) []model.Task {
-	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM task WHERE user_id = $1", userId)
+func GetUserTasks(ctx context.Context, userId int, pager *utils.Pager) []model.Task {
+	rows, _ := db.ConnPool.Query(
+		ctx,
+		"SELECT * FROM task WHERE user_id = $1"+pager.QuerySuffix(),
+		userId,
+	)
 	return readTaskRowsThenExtend(ctx, rows)
 }
 
-func GetAllTasks(ctx context.Context) []model.Task {
-	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM task")
+func GetAllTasks(ctx context.Context, pager *utils.Pager) []model.Task {
+	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM task"+pager.QuerySuffix())
 	return readTaskRowsThenExtend(ctx, rows)
 }
 

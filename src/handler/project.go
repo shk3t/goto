@@ -10,7 +10,7 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
+	s "strings"
 
 	"os/exec"
 	"path/filepath"
@@ -22,8 +22,9 @@ import (
 func GetProjects(c *fiber.Ctx) error {
 	ctx := context.Background()
 	user := GetCurrentUser(c)
+	pager := utils.NewPager(c)
 
-	projects := query.GetUserProjects(ctx, user.Id)
+	projects := query.GetUserProjects(ctx, user.Id, pager)
 
 	response := []model.ProjectPublic{}
 	for _, p := range projects {
@@ -68,7 +69,7 @@ func LoadProject(c *fiber.Ctx) error {
 	postfix := uuid.New().String()
 
 	if body.Url != "" {
-		urlParts := strings.Split(body.Url, "/")
+		urlParts := s.Split(body.Url, "/")
 		repoName := urlParts[len(urlParts)-1]
 		projectName := repoName + "_" + postfix
 

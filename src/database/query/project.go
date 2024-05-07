@@ -79,12 +79,16 @@ func GetUserProject(ctx context.Context, id int, userId int) *model.Project {
 	return readProjectRowThenExtend(ctx, row)
 }
 
-func GetUserProjects(ctx context.Context, userId int) []model.Project {
-	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM project WHERE user_id = $1", userId)
+func GetUserProjects(ctx context.Context, userId int, pager *utils.Pager) []model.Project {
+	rows, _ := db.ConnPool.Query(
+		ctx,
+		"SELECT * FROM project WHERE user_id = $1"+pager.QuerySuffix(),
+		userId,
+	)
 	return readProjectRowsThenExtend(ctx, rows)
 }
 
-func CreateProject(ctx context.Context, p *model.Project) error {  // TODO also return project
+func CreateProject(ctx context.Context, p *model.Project) error { // TODO also return project
 	tx, _ := db.ConnPool.BeginTx(ctx, pgx.TxOptions{})
 	defer tx.Rollback(ctx)
 
@@ -102,7 +106,9 @@ func CreateProject(ctx context.Context, p *model.Project) error {  // TODO also 
 	}
 
 	var projectId int
-	err = tx.QueryRow(ctx, "SELECT id FROM project WHERE dir = $1", p.Dir).Scan(&projectId)  // TODO remove after RETURNING id
+	err = tx.QueryRow(ctx, "SELECT id FROM project WHERE dir = $1", p.Dir).
+		Scan(&projectId)
+		// TODO remove after RETURNING id
 	if err != nil {
 		return err
 	}

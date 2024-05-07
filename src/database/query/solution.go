@@ -71,8 +71,12 @@ func GetUserSolution(ctx context.Context, id int, userId int) *model.Solution {
 	return readSolutionRowThenExtend(ctx, row)
 }
 
-func GetUserSolutions(ctx context.Context, userId int) []model.Solution {
-	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM solution WHERE user_id = $1", userId)
+func GetUserSolutions(ctx context.Context, userId int, pager *utils.Pager) []model.Solution {
+	rows, _ := db.ConnPool.Query(
+		ctx,
+		"SELECT * FROM solution WHERE user_id = $1"+pager.QuerySuffix(),
+		userId,
+	)
 	return readSolutionRowsThenExtend(ctx, rows)
 }
 
