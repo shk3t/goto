@@ -30,19 +30,21 @@ func IsLoginInUse(ctx context.Context, login string) bool {
 	return exists
 }
 
-func CreateUser(ctx context.Context, u *model.User) error {
-	_, err := db.ConnPool.Exec(
-		ctx,
-		"INSERT INTO \"user\" (login, password) VALUES ($1, $2)",
+func CreateUser(ctx context.Context, u *model.User) (*model.User, error) {
+	err := db.ConnPool.QueryRow(
+		ctx, `
+        INSERT INTO "user" (login, password)
+        VALUES ($1, $2)
+        RETURNING id`,
 		u.Login, u.Password,
-	)
-	return err
+	).Scan(&u.Id)
+	return u, err
 }
 
 func UpdateUser(ctx context.Context, id int, u *model.User) error {
 	_, err := db.ConnPool.Exec(
 		ctx,
-		"UPDATE \"user\" SET login = $1, password $2 WHERE id = $3",
+		"UPDATE \"user\" SET login = $1, password = $2 WHERE id = $3",
 		u.Login, u.Password,
 		id,
 	)

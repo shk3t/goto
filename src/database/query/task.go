@@ -70,6 +70,11 @@ func GetTask(ctx context.Context, id int) *model.Task {
 	return readTaskRowThenExtend(ctx, row)
 }
 
+func GetTaskWithStubs(ctx context.Context, id int) *model.Task {
+	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM task WHERE id = $1", id)
+	return readTaskRowThenExtend(ctx, row)
+}
+
 func GetUserTasks(ctx context.Context, userId int) []model.Task {
 	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM task WHERE user_id = $1", userId)
 	return readTaskRowsThenExtend(ctx, rows)

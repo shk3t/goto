@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	s "strings"
-	"time"
 
 	cp "github.com/otiai10/copy"
 
@@ -47,23 +46,36 @@ func SubmitSolution(c *fiber.Ctx) error {
 	ctx := context.Background()
 	user := GetCurrentUser(c)
 
-	solution := model.SolutionBase{}
-	if err := c.BodyParser(&solution); err != nil {
+	solutionBody := model.SolutionBase{}
+	if err := c.BodyParser(&solutionBody); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Bad solution format")
 	}
 
-	task := query.GetTask(ctx, solution.TaskId)
+	task := query.GetTask(ctx, solutionBody.TaskId)
 	if task == nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Task not found")
 	}
 
 	taskFileNames := utils.MapKeys(task.Files)
-	solutionFileNames := utils.MapKeys(solution.Files)
+	solutionFileNames := utils.MapKeys(solutionBody.Files)
 	missingFileNames := utils.Difference(taskFileNames, solutionFileNames)
 	if len(missingFileNames) > 0 {
 		return c.Status(fiber.StatusBadRequest).
 			JSON(fiber.Map{"error": "Missing files", "details": missingFileNames})
 	}
+
+	solution := &model.Solution{
+		SolutionBase: solutionBody,
+		UserId:       user.Id,
+	}
+	solution = query.SaveSolution(ctx, solution)
+	go checkSolution(solution, task)
+
+	return c.JSON(solution)
+}
+
+func checkSolution(solution *model.Solution, task *model.Task) {
+	ctx := context.Background()
 
 	project := query.GetProjectShallow(ctx, task.ProjectId)
 	tempDir := uuid.New().String()
@@ -79,7 +91,6 @@ func SubmitSolution(c *fiber.Ctx) error {
 		os.WriteFile(path, []byte(code), os.ModePerm)
 	}
 
-	var result string
 	switch project.Containerization {
 	case "docker":
 		buildCmd := exec.Command("docker", "build", "-q", projectTempPath)
@@ -94,14 +105,14 @@ func SubmitSolution(c *fiber.Ctx) error {
 			s.TrimSuffix(string(tempImage), "\n"),
 		)
 		output, _ := runCmd.Output()
-		result = string(output)
+		solution.Result = string(output)
 		exec.Command("docker", "system", "prune", "-f").Run()
 	case "docker-compose":
 		upCmd := exec.Command("docker", "compose", "up", "--build", "--abort-on-container-exit")
 		upCmd.Env = append(upCmd.Env, "TARGET="+task.RunTarget)
 		upCmd.Dir = projectTempPath
 		output, _ := upCmd.Output()
-		result = utils.ParseComposeOutput(output, project.Dir)
+		solution.Result = utils.ParseComposeOutput(output, project.Dir)
 		downCmd := exec.Command(
 			"docker",
 			"compose",
@@ -116,11 +127,6 @@ func SubmitSolution(c *fiber.Ctx) error {
 		exec.Command("docker", "system", "prune", "-f").Run()
 	}
 
-	return c.JSON(model.Solution{
-		SolutionBase: solution,
-		UserId:       user.Id,
-		Status:       utils.ParseStatus(result),
-		Result:       result,
-		UpdatedAt:    time.Now(),
-	})
+	solution.Status = utils.ParseStatus(solution.Result)
+	query.SaveSolution(ctx, solution)
 }

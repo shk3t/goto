@@ -84,7 +84,7 @@ func GetUserProjects(ctx context.Context, userId int) []model.Project {
 	return readProjectRowsThenExtend(ctx, rows)
 }
 
-func CreateProject(ctx context.Context, p *model.Project) error {
+func CreateProject(ctx context.Context, p *model.Project) error {  // TODO also return project
 	tx, _ := db.ConnPool.BeginTx(ctx, pgx.TxOptions{})
 	defer tx.Rollback(ctx)
 
@@ -102,7 +102,7 @@ func CreateProject(ctx context.Context, p *model.Project) error {
 	}
 
 	var projectId int
-	err = tx.QueryRow(ctx, "SELECT id FROM project WHERE dir = $1", p.Dir).Scan(&projectId)
+	err = tx.QueryRow(ctx, "SELECT id FROM project WHERE dir = $1", p.Dir).Scan(&projectId)  // TODO remove after RETURNING id
 	if err != nil {
 		return err
 	}

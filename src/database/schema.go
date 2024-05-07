@@ -60,9 +60,10 @@ func InitSchema(ctx context.Context) {
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
             task_id INTEGER NOT NULL REFERENCES task(id) ON DELETE CASCADE,
-            status VARCHAR(64) NOT NULL,
-            result TEXT,
-            updated_at TIMESTAMP DEFAULT NOW()
+            status VARCHAR(64) NOT NULL DEFAULT 'check',
+            result TEXT NOT NULL DEFAULT '',
+            updated_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(user_id, task_id)
         )`,
 		`
         CREATE TABLE IF NOT EXISTS solution_file (

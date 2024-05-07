@@ -66,16 +66,16 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	user := &model.User{Login: body.Login, Password: passwordHash}
-	if err := query.CreateUser(ctx, user); err != nil {
+	user, err = query.CreateUser(ctx, user)
+	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
-	user, _ = query.GetUserByLogin(ctx, body.Login)
 
 	encodedToken, err := getJwtToken(user)
 	if err != nil {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
-	return c.JSON(fiber.Map{"token": encodedToken})
+	return c.JSON(fiber.Map{"user": user, "token": encodedToken})
 }
 
 func Login(c *fiber.Ctx) error {
@@ -102,5 +102,5 @@ func Login(c *fiber.Ctx) error {
 	if err != nil {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
-	return c.JSON(fiber.Map{"token": encodedToken})
+    return c.JSON(fiber.Map{"user": user, "token": encodedToken})
 }
