@@ -32,9 +32,9 @@ func ParseComposeOutput(data []byte, dir string) string {
 
 	images := b.Split(b.TrimSuffix(imagesOutput, []byte("\n")), []byte("\n"))
 
-	serviceNames := [][]byte{}
-	for _, image := range images {
-		serviceNames = append(serviceNames, composeServiceNameRegexp.FindSubmatch(image)[1])
+	serviceNames := make([][]byte, len(images))
+	for i, image := range images {
+		serviceNames[i] = composeServiceNameRegexp.FindSubmatch(image)[1]
 	}
 
 	lines := b.Split(data, []byte("\n"))

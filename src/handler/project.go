@@ -26,15 +26,10 @@ func GetProjects(c *fiber.Ctx) error {
 
 	projects := query.GetUserProjects(ctx, user.Id, pager)
 
-	response := []model.ProjectPublic{}
-	for _, p := range projects {
-		response = append(response, model.ProjectPublic{
-			ProjectBase: p.ProjectBase,
-			Id:          p.Id,
-			Tasks:       p.Tasks,
-		})
+	response := make([]model.ProjectMin, len(projects))
+	for i, p := range projects {
+		response[i] = *p.Min()
 	}
-
 	return c.JSON(response)
 }
 
@@ -52,11 +47,7 @@ func GetProject(c *fiber.Ctx) error {
 		return c.Status(404).SendString("Project not found")
 	}
 
-	return c.JSON(model.ProjectPublic{
-		ProjectBase: project.ProjectBase,
-		Id:          project.Id,
-		Tasks:       project.Tasks,
-	})
+	return c.JSON(project.Public())
 }
 
 func LoadProject(c *fiber.Ctx) error {
@@ -113,9 +104,16 @@ func postCreateProject(user *model.User, projectName string) {
 		return
 	}
 
-	project := model.NewProjectFromConfig(gotoConfig)
+	project := gotoConfig.NewProject()
 	project.Dir = projectName
 	project.User = *user
+	for _, t := range project.Tasks {
+		for j, tf := range t.Files {
+			stubPath := filepath.Join(config.MediaPath, project.Dir, project.StubDir, tf.Path)
+			stubBytes, _ := os.ReadFile(stubPath)
+			t.Files[j].Stub = string(stubBytes)
+		}
+	}
 	if err = query.CreateProject(ctx, project); err != nil {
 		log.Println(err)
 		os.RemoveAll(projectPath)

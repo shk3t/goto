@@ -9,6 +9,50 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+type TaskConfig struct {
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	RunTarget   string     `json:"runtarget"`
+	Files       []TaskFile `json:"files"`
+}
+
+func (tc *TaskConfig) Task() *Task {
+	return &Task{
+		TaskBase:  TaskBase{Name: tc.Name, Description: tc.Description},
+		RunTarget: tc.RunTarget,
+		Files:     tc.Files,
+	}
+}
+
+type GotoConfig struct {
+	ProjectBase
+	TaskConfigs []TaskConfig
+}
+
+func (cfg *GotoConfig) NewProject() *Project {
+	p := Project{ProjectBase: cfg.ProjectBase}
+	p.Tasks = make([]Task, len(cfg.TaskConfigs))
+	for i, tc := range cfg.TaskConfigs {
+		p.Tasks[i] = *tc.Task()
+	}
+	return &p
+}
+
+func LoadGotoConfig(configPath string) (*GotoConfig, error) {
+	var config GotoConfig
+
+	tomlBytes, err := os.ReadFile(configPath)
+	if err != nil {
+		return &config, err
+	}
+
+	_, err = toml.Decode(string(tomlBytes), &config)
+	if err != nil {
+		return &config, err
+	}
+	return &config, nil
+}
+
 func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 	fatalError = errors.New("Bad config file format")
 	defer func() { recover() }()
@@ -22,8 +66,9 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 	cfg.StubDir = utils.GetAssertDefault(d, "stubdir", "stubs")
 
 	packs := d["modules"].([]any)
-	for _, p := range packs {
-		cfg.Modules = append(cfg.Modules, p.(string))
+	cfg.Modules = make([]string, len(packs))
+	for i, p := range packs {
+		cfg.Modules[i] = p.(string)
 	}
 
 	taskConfigs := d["tasks"].([]map[string]any)
@@ -40,17 +85,20 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 		taskNames[i] = tc["name"].(string)
 
 		taskFiles := tc["files"].(any)
-		cfg.TaskConfigs[i].Files = map[string]string{}
+		cfg.TaskConfigs[i].Files = []TaskFile{}
 
 		switch taskFiles.(type) {
 		case []any:
 			taskFileNames := make([]string, len(taskFiles.([]any)))
+			cfg.TaskConfigs[i].Files = make([]TaskFile, len(taskFiles.([]any)))
 
 			for j, tf := range taskFiles.([]any) {
 				path := tf.(string)
 				pathParts := strings.Split(path, string(os.PathSeparator))
 				name := pathParts[len(pathParts)-1]
-				cfg.TaskConfigs[i].Files[name] = path
+
+				task := TaskFile{Name: name, Path: path}
+				cfg.TaskConfigs[i].Files[j] = task
 
 				taskFileNames[j] = name
 			}
@@ -60,7 +108,8 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 			}
 		case map[string]any:
 			for name, path := range taskFiles.(map[string]any) {
-				cfg.TaskConfigs[i].Files[name] = path.(string)
+				task := TaskFile{Name: name, Path: path.(string)}
+				cfg.TaskConfigs[i].Files = append(cfg.TaskConfigs[i].Files, task)
 			}
 		}
 
@@ -71,19 +120,4 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 	}
 
 	return nil
-}
-
-func LoadGotoConfig(configPath string) (*GotoConfig, error) {
-	var config GotoConfig
-
-	tomlBytes, err := os.ReadFile(configPath)
-	if err != nil {
-		return &config, err
-	}
-
-	_, err = toml.Decode(string(tomlBytes), &config)
-	if err != nil {
-		return &config, err
-	}
-	return &config, nil
 }

@@ -17,6 +17,21 @@ func readSolutionRow(row Scanable) *model.Solution {
 		&solution.UserId,
 		&solution.TaskId,
 		&solution.Status,
+		&solution.UpdatedAt,
+	)
+	if err != nil {
+		return nil
+	}
+	return &solution
+}
+
+func readSolutionRowWithResult(row Scanable) *model.Solution {
+	solution := model.Solution{}
+	err := row.Scan(
+		&solution.Id,
+		&solution.UserId,
+		&solution.TaskId,
+		&solution.Status,
 		&solution.Result,
 		&solution.UpdatedAt,
 	)
@@ -36,25 +51,24 @@ func readSolutionRows(rows pgx.Rows) map[int]model.Solution {
 }
 
 func readSolutionRowThenExtend(ctx context.Context, row pgx.Row) *model.Solution {
-	solution := readSolutionRow(row)
+	solution := readSolutionRowWithResult(row)
 	if solution == nil {
 		return nil
 	}
 
-	files := getFilesBySolutions(ctx, []int{solution.Id})
-	for _, sf := range files {
-		solution.Files[sf.Name] = sf.Code
-	}
+	solution.Files = getFilesBySolutionsWithCode(ctx, []int{solution.Id})
 	return solution
 }
 
 func readSolutionRowsThenExtend(ctx context.Context, rows pgx.Rows) []model.Solution {
-	tasksByIds := readSolutionRows(rows)
-	files := getFilesByTasks(ctx, utils.MapKeys(tasksByIds))
-	for _, tf := range files {
-		tasksByIds[tf.TaskId].Files[tf.Name] = tf.Path
+	solutionsByIds := readSolutionRows(rows)
+	solutionFiles := getFilesBySolutions(ctx, utils.MapKeys(solutionsByIds))
+	for _, sf := range solutionFiles {
+		solution := solutionsByIds[sf.SolutionId]
+		solution.Files = append(solution.Files, sf)
+		solutionsByIds[sf.SolutionId] = solution
 	}
-	return utils.MapValues(tasksByIds)
+	return utils.MapValues(solutionsByIds)
 }
 
 func GetSolution(ctx context.Context, id int) *model.Solution {
@@ -73,35 +87,56 @@ func GetUserSolution(ctx context.Context, id int, userId int) *model.Solution {
 
 func GetUserSolutions(ctx context.Context, userId int, pager *utils.Pager) []model.Solution {
 	rows, _ := db.ConnPool.Query(
-		ctx,
-		"SELECT * FROM solution WHERE user_id = $1"+pager.QuerySuffix(),
+		ctx, `
+		SELECT id, user_id, task_id, status, updated_at
+        FROM solution WHERE user_id = $1`+pager.QuerySuffix(),
 		userId,
 	)
-	return readSolutionRowsThenExtend(ctx, rows)
+	return utils.MapValues(readSolutionRows(rows))
 }
 
 func getFilesBySolutions(ctx context.Context, solutionIds []int) []model.SolutionFile {
-	files := []model.SolutionFile{}
+	solutionFiles := []model.SolutionFile{}
 
 	rows, _ := db.ConnPool.Query(
-		ctx,
-		"SELECT id, task_id, name, path FROM solution_file WHERE solution_id = ANY ($1)",
+		ctx, `
+		SELECT id, solution_id, name
+        FROM solution_file WHERE solution_id = ANY ($1)`,
 		solutionIds,
 	)
 
 	for rows.Next() {
-		file := model.SolutionFile{}
-		rows.Scan(&file.Id, &file.SolutionId, &file.Name, &file.Code)
-		files = append(files, file)
+		sf := model.SolutionFile{}
+		rows.Scan(&sf.Id, &sf.SolutionId, &sf.Name)
+		solutionFiles = append(solutionFiles, sf)
 	}
 
-	return files
+	return solutionFiles
+}
+
+func getFilesBySolutionsWithCode(ctx context.Context, solutionIds []int) []model.SolutionFile {
+	solutionFiles := []model.SolutionFile{}
+
+	rows, _ := db.ConnPool.Query(
+		ctx, `
+		SELECT id, solution_id, name, code
+        FROM solution_file WHERE solution_id = ANY ($1)`,
+		solutionIds,
+	)
+
+	for rows.Next() {
+		sf := model.SolutionFile{}
+		rows.Scan(&sf.Id, &sf.SolutionId, &sf.Name, &sf.Code)
+		solutionFiles = append(solutionFiles, sf)
+	}
+
+	return solutionFiles
 }
 
 func saveSolutionFiles(ctx context.Context, tx pgx.Tx, s *model.Solution) {
-	solutionFileEntries := [][]any{}
-	for name, code := range s.Files {
-		solutionFileEntries = append(solutionFileEntries, []any{s.Id, name, code})
+	solutionFileEntries := make([][]any, len(s.Files))
+	for i, sf := range s.Files {
+		solutionFileEntries[i] = []any{s.Id, sf.Name, sf.Code}
 	}
 	tx.CopyFrom(
 		ctx,

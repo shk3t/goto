@@ -23,7 +23,12 @@ func GetSolutions(c *fiber.Ctx) error {
 	user := GetCurrentUser(c)
 	pager := utils.NewPager(c)
 	solutions := query.GetUserSolutions(ctx, user.Id, pager)
-	return c.JSON(solutions)
+
+	response := make([]model.SolutionMin, len(solutions))
+	for i, s := range solutions {
+		response[i] = *s.Min()
+	}
+	return c.JSON(response)
 }
 
 func GetSolution(c *fiber.Ctx) error {
@@ -47,7 +52,7 @@ func SubmitSolution(c *fiber.Ctx) error {
 	ctx := context.Background()
 	user := GetCurrentUser(c)
 
-	solutionBody := model.SolutionBase{}
+	solutionBody := model.SolutionInput{}
 	if err := c.BodyParser(&solutionBody); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Bad solution format")
 	}
@@ -57,8 +62,14 @@ func SubmitSolution(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Task not found")
 	}
 
-	taskFileNames := utils.MapKeys(task.Files)
-	solutionFileNames := utils.MapKeys(solutionBody.Files)
+	taskFileNames := make([]string, len(task.Files))
+	for i, tf := range task.Files {
+		taskFileNames[i] = tf.Name
+	}
+	solutionFileNames := make([]string, len(solutionBody.Files))
+	for i, sf := range solutionBody.Files {
+		solutionFileNames[i] = sf.Name
+	}
 	missingFileNames := utils.Difference(taskFileNames, solutionFileNames)
 	if len(missingFileNames) > 0 {
 		return c.Status(fiber.StatusBadRequest).
@@ -66,8 +77,9 @@ func SubmitSolution(c *fiber.Ctx) error {
 	}
 
 	solution := &model.Solution{
-		SolutionBase: solutionBody,
-		UserId:       user.Id,
+		TaskId: solutionBody.TaskId,
+		Files:  solutionBody.Files,
+		UserId: user.Id,
 	}
 	solution = query.SaveSolution(ctx, solution)
 	go checkSolution(solution, task)
@@ -78,6 +90,11 @@ func SubmitSolution(c *fiber.Ctx) error {
 func checkSolution(solution *model.Solution, task *model.Task) {
 	ctx := context.Background()
 
+	solutionFilesByNames := map[string]model.SolutionFile{}
+	for _, sf := range solution.Files {
+		solutionFilesByNames[sf.Name] = sf
+	}
+
 	project := query.GetProjectShallow(ctx, task.ProjectId)
 	tempDir := uuid.New().String()
 	projectTempPath := filepath.Join(config.TempPath, tempDir)
@@ -86,9 +103,9 @@ func checkSolution(solution *model.Solution, task *model.Task) {
 	defer os.RemoveAll(projectTempPath)
 
 	srcPath := filepath.Join(projectTempPath, project.SrcDir)
-	for taskFileName, taskFilePath := range task.Files {
-		path := filepath.Join(srcPath, taskFilePath)
-		code := solution.Files[taskFileName]
+	for _, tf := range task.Files {
+		path := filepath.Join(srcPath, tf.Path)
+		code := solutionFilesByNames[tf.Name].Code
 		os.WriteFile(path, []byte(code), os.ModePerm)
 	}
 

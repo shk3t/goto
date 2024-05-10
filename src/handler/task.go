@@ -24,7 +24,11 @@ func GetTasks(c *fiber.Ctx) error {
 		tasks = query.GetAllTasks(ctx, pager)
 	}
 
-	return c.JSON(tasks)
+	response := make([]model.TaskMin, len(tasks))
+	for i, t := range tasks {
+		response[i] = *t.Min()
+	}
+	return c.JSON(response)
 }
 
 func GetTask(c *fiber.Ctx) error {
@@ -35,10 +39,10 @@ func GetTask(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
 
-	task := query.GetTaskWithStubs(ctx, id)
+	task := query.GetTask(ctx, id)
 	if task == nil {
 		return c.Status(404).SendString("Task not found")
 	}
 
-	return c.JSON(task)
+	return c.JSON(task.Private())
 }

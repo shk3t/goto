@@ -31,7 +31,7 @@ func InitSchema(ctx context.Context) {
             stubdir VARCHAR(64) NOT NULL DEFAULT 'stubs'
         )`,
 		`
-        CREATE TABLE IF NOT EXISTS project_module (
+        CREATE TABLE IF NOT EXISTS module (
             id SERIAL PRIMARY KEY,
             project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
             name VARCHAR(64) NOT NULL
@@ -52,6 +52,7 @@ func InitSchema(ctx context.Context) {
             task_id INTEGER NOT NULL REFERENCES task(id) ON DELETE CASCADE,
             name VARCHAR(64) NOT NULL,
             path VARCHAR(256) NOT NULL,
+            stub TEXT NOT NULL,
             UNIQUE(task_id, name)
         )`,
 

@@ -42,21 +42,32 @@ func readProjectRowThenExtend(ctx context.Context, row pgx.Row) *model.Project {
 		return nil
 	}
 
-	tasks := getTasksByProjects(ctx, []int{project.Id})
-	for _, t := range tasks {
-		project.Tasks = append(project.Tasks, t)
+	project.Tasks = getTasksByProjectsWithStubs(ctx, []int{project.Id})
+	modules := getModulesByProjects(ctx, []int{project.Id})
+	project.Modules = make([]string, len(modules))
+	for i, m := range modules {
+		project.Modules[i] = m.Name
 	}
 	return project
 }
 
 func readProjectRowsThenExtend(ctx context.Context, rows pgx.Rows) []model.Project {
 	projectsByIds := readProjectRows(rows)
+
 	allTasks := getTasksByProjects(ctx, utils.MapKeys(projectsByIds))
 	for _, t := range allTasks {
 		project := projectsByIds[t.ProjectId]
 		project.Tasks = append(project.Tasks, t)
 		projectsByIds[t.ProjectId] = project
 	}
+
+	allModules := getModulesByProjects(ctx, utils.MapKeys(projectsByIds))
+	for _, m := range allModules {
+		project := projectsByIds[m.ProjectId]
+		project.Modules = append(project.Modules, m.Name)
+		projectsByIds[m.ProjectId] = project
+	}
+
 	return utils.MapValues(projectsByIds)
 }
 
@@ -86,6 +97,24 @@ func GetUserProjects(ctx context.Context, userId int, pager *utils.Pager) []mode
 		userId,
 	)
 	return readProjectRowsThenExtend(ctx, rows)
+}
+
+func getModulesByProjects(ctx context.Context, projectIds []int) []model.Module {
+	modules := []model.Module{}
+
+	rows, _ := db.ConnPool.Query(
+		ctx,
+		"SELECT * FROM module WHERE project_id = ANY ($1)",
+		projectIds,
+	)
+
+	for rows.Next() {
+		m := model.Module{}
+		rows.Scan(&m.Id, &m.ProjectId, &m.Name)
+		modules = append(modules, m)
+	}
+
+	return modules
 }
 
 func CreateProject(ctx context.Context, p *model.Project) error { // TODO also return project
@@ -119,7 +148,7 @@ func CreateProject(ctx context.Context, p *model.Project) error { // TODO also r
 	}
 	_, err = tx.CopyFrom(
 		ctx,
-		pgx.Identifier{"project_module"},
+		pgx.Identifier{"module"},
 		[]string{"project_id", "name"},
 		pgx.CopyFromRows(moduleEntries),
 	)
@@ -157,15 +186,15 @@ func CreateProject(ctx context.Context, p *model.Project) error { // TODO also r
 		}
 
 		task := taskFilesByTaskName[taskName]
-		for name, path := range task.Files {
-			taskFileEntries = append(taskFileEntries, []any{taskId, name, path})
+		for _, tf := range task.Files {
+			taskFileEntries = append(taskFileEntries, []any{taskId, tf.Name, tf.Path, tf.Stub})
 		}
 	}
 
 	_, err = tx.CopyFrom(
 		ctx,
 		pgx.Identifier{"task_file"},
-		[]string{"task_id", "name", "path"},
+		[]string{"task_id", "name", "path", "stub"},
 		pgx.CopyFromRows(taskFileEntries),
 	)
 	if err != nil {
