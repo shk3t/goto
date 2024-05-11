@@ -5,6 +5,7 @@ import (
 	"errors"
 	"goto/src/config"
 	q "goto/src/database/query"
+	f "goto/src/filter"
 	m "goto/src/model"
 	"goto/src/service"
 	u "goto/src/utils"
@@ -21,10 +22,9 @@ import (
 
 func GetProjects(fctx *fiber.Ctx) error {
 	ctx := context.Background()
-	user := service.GetCurrentUser(fctx)
 	pager := service.NewPager(fctx)
-
-	projects := q.GetUserProjects(ctx, user.Id, pager)
+	filter := f.NewProjectFilter(fctx)
+	projects := q.GetProjects(ctx, pager, filter)
 	return fctx.JSON(projects.Min())
 }
 

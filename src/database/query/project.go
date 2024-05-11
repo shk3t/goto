@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	db "goto/src/database"
+	f "goto/src/filter"
 	m "goto/src/model"
 	"goto/src/service"
 	u "goto/src/utils"
@@ -86,11 +87,15 @@ func GetUserProject(ctx context.Context, id int, userId int) *m.Project {
 	return readProjectRowThenExtend(ctx, row)
 }
 
-func GetUserProjects(ctx context.Context, userId int, pager *service.Pager) m.Projects {
+func GetProjects(
+	ctx context.Context,
+	pager *service.Pager,
+	filter *f.ProjectFilter,
+) m.Projects {
 	rows, _ := db.ConnPool.Query(
 		ctx,
-		"SELECT * FROM project WHERE user_id = $1"+pager.QuerySuffix(),
-		userId,
+		"SELECT * FROM project WHERE"+filter.SqlCondition+pager.QuerySuffix(),
+		filter.SqlArgs...,
 	)
 	return readProjectRowsThenExtend(ctx, rows)
 }

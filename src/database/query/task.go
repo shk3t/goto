@@ -92,7 +92,7 @@ func GetTask(ctx context.Context, id int) *m.Task {
 	return readTaskRowThenExtend(ctx, row)
 }
 
-func GetAllTasks(ctx context.Context, pager *service.Pager, filter *f.TaskFilter) m.Tasks {
+func GetTasks(ctx context.Context, pager *service.Pager, filter *f.TaskFilter) m.Tasks {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
         SELECT task.*, project.language

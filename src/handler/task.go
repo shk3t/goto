@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	q "goto/src/database/query"
-	"goto/src/filter"
+	f "goto/src/filter"
 	"goto/src/service"
 	sc "strconv"
 
@@ -13,8 +13,8 @@ import (
 func GetTasks(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 	pager := service.NewPager(fctx)
-	taskFilter := filter.NewTaskFilter(fctx)
-	tasks := q.GetAllTasks(ctx, pager, taskFilter)
+	filter := f.NewTaskFilter(fctx)
+	tasks := q.GetTasks(ctx, pager, filter)
 	return fctx.JSON(tasks.Min())
 }
 
