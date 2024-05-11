@@ -2,10 +2,10 @@ package model
 
 import (
 	"errors"
-	"goto/src/utils"
+	u "goto/src/utils"
 	"os"
 	sc "strconv"
-	"strings"
+	s "strings"
 
 	"github.com/BurntSushi/toml"
 )
@@ -73,19 +73,19 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 
 	d, _ := data.(map[string]any)
 
-	cfg.Name, err = utils.GetAssertError[string](d, "name", "")
+	cfg.Name, err = u.GetAssertError[string](d, "name", "")
 	if err != nil {
 		return err
 	}
-	cfg.Language, err = utils.GetAssertError[string](d, "language", "")
+	cfg.Language, err = u.GetAssertError[string](d, "language", "")
 	if err != nil {
 		return err
 	}
-	cfg.Containerization = utils.GetAssertDefault(d, "containerization", "docker")
-	cfg.SrcDir = utils.GetAssertDefault(d, "srcdir", "src")
-	cfg.StubDir = utils.GetAssertDefault(d, "stubdir", "stubs")
+	cfg.Containerization = u.GetAssertDefault(d, "containerization", "docker")
+	cfg.SrcDir = u.GetAssertDefault(d, "srcdir", "src")
+	cfg.StubDir = u.GetAssertDefault(d, "stubdir", "stubs")
 
-	modules, err := utils.GetAssertError[[]any](d, "modules", "")
+	modules, err := u.GetAssertError[[]any](d, "modules", "")
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 		}
 	}
 
-	taskConfigs, err := utils.GetAssertError[[]map[string]any](d, "tasks", "")
+	taskConfigs, err := u.GetAssertError[[]map[string]any](d, "tasks", "")
 	if err != nil {
 		return err
 	}
@@ -106,21 +106,21 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 	taskNames := make([]string, len(taskConfigs))
 
 	for i, tc := range taskConfigs {
-		taskName, err := utils.GetAssertError[string](tc, "name", sc.Itoa(i+1)+" task")
+		taskName, err := u.GetAssertError[string](tc, "name", sc.Itoa(i+1)+" task")
 		if err != nil {
 			return err
 		}
 		taskConfig := TaskConfig{
 			TaskConfigBase: TaskConfigBase{
 				Name:        taskName,
-				Description: utils.GetAssertDefault(tc, "description", ""),
+				Description: u.GetAssertDefault(tc, "description", ""),
 			},
-			RunTarget: utils.GetAssertDefault(tc, "runtarget", ""),
+			RunTarget: u.GetAssertDefault(tc, "runtarget", ""),
 		}
 		cfg.TaskConfigs[i] = taskConfig
 		taskNames[i] = taskName
 
-		taskFiles, err := utils.GetAssertError[any](tc, "files", taskName+" task")
+		taskFiles, err := u.GetAssertError[any](tc, "files", taskName+" task")
 		cfg.TaskConfigs[i].Files = []TaskFile{}
 
 		switch taskFiles.(type) {
@@ -134,7 +134,7 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 				if !ok {
 					return errors.New(taskName + " task, " + sc.Itoa(j+1) + " file: `path` has bad format")
 				}
-				pathParts := strings.Split(path, string(os.PathSeparator))
+				pathParts := s.Split(path, string(os.PathSeparator))
 				name := pathParts[len(pathParts)-1]
 
 				task := TaskFile{Name: name, Path: path}
@@ -143,7 +143,7 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 				taskFileNames[j] = name
 			}
 
-			if !utils.UniqueOnly(&taskFileNames) {
+			if !u.UniqueOnly(&taskFileNames) {
 				return errors.New(taskName + " task: conflicting file names; you should specify them via hashtable.")
 			}
 		case map[string]any:
@@ -162,7 +162,7 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 
 	}
 
-	if !utils.UniqueOnly(&taskNames) {
+	if !u.UniqueOnly(&taskNames) {
 		return errors.New("Task names must be unique")
 	}
 

@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 	"goto/src/config"
-	"goto/src/database/query"
-	"goto/src/model"
+	q "goto/src/database/query"
+	m "goto/src/model"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,7 +22,7 @@ func checkPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-func getJwtToken(user *model.User) (string, error) {
+func getJwtToken(user *m.User) (string, error) {
 	claims := jwt.MapClaims{
 		"id":    user.Id,
 		"login": user.Login,
@@ -33,74 +33,65 @@ func getJwtToken(user *model.User) (string, error) {
 	return encodedToken, err
 }
 
-func GetCurrentUser(c *fiber.Ctx) *model.User {
-	token := c.Locals("user").(*jwt.Token)
-	claims := token.Claims.(jwt.MapClaims)
-	return &model.User{
-		Id:    int(claims["id"].(float64)),
-		Login: claims["login"].(string),
-	}
-}
-
-func Register(c *fiber.Ctx) error {
+func Register(fctx *fiber.Ctx) error {
 	ctx := context.Background()
-	body := model.User{}
-	if err := c.BodyParser(&body); err != nil {
+	body := m.User{}
+	if err := fctx.BodyParser(&body); err != nil {
 		return err
 	}
 
 	if body.Login == "" || body.Password == "" {
-		return c.Status(fiber.StatusBadRequest).
+		return fctx.Status(fiber.StatusBadRequest).
 			SendString("Login and password must be provided")
 	}
 	if len(body.Password) < 8 {
-		return c.Status(fiber.StatusBadRequest).SendString("Password is too short")
+		return fctx.Status(fiber.StatusBadRequest).SendString("Password is too short")
 	}
-	if query.IsLoginInUse(ctx, body.Login) {
-		return c.Status(fiber.StatusBadRequest).SendString("Login is already in use")
+	if q.IsLoginInUse(ctx, body.Login) {
+		return fctx.Status(fiber.StatusBadRequest).SendString("Login is already in use")
 	}
 
 	passwordHash, err := hashPassword(body.Password)
 	if err != nil {
-		return c.SendStatus(fiber.StatusInternalServerError)
+		return fctx.SendStatus(fiber.StatusInternalServerError)
 	}
 
-	user := &model.User{Login: body.Login, Password: passwordHash}
-	user, err = query.CreateUser(ctx, user)
+	user := &m.User{Login: body.Login, Password: passwordHash}
+	user, err = q.CreateUser(ctx, user)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
 	encodedToken, err := getJwtToken(user)
 	if err != nil {
-		return c.SendStatus(fiber.StatusInternalServerError)
+		return fctx.SendStatus(fiber.StatusInternalServerError)
 	}
-	return c.JSON(fiber.Map{"user": user, "token": encodedToken})
+	return fctx.JSON(fiber.Map{"user": user, "token": encodedToken})
 }
 
-func Login(c *fiber.Ctx) error {
+func Login(fctx *fiber.Ctx) error {
 	ctx := context.Background()
-	body := model.User{}
-	if err := c.BodyParser(&body); err != nil {
+	body := m.User{}
+	if err := fctx.BodyParser(&body); err != nil {
 		return err
 	}
 
 	if body.Login == "" || body.Password == "" {
-		return c.Status(fiber.StatusBadRequest).
+		return fctx.Status(fiber.StatusBadRequest).
 			SendString("Login and password must be provided")
 	}
 
-	user, err := query.GetUserByLogin(ctx, body.Login)
+	user, err := q.GetUserByLogin(ctx, body.Login)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("Login or password is not valid")
+		return fctx.Status(fiber.StatusUnauthorized).SendString("Login or password is not valid")
 	}
 	if valid := checkPasswordHash(body.Password, user.Password); !valid {
-		return c.Status(fiber.StatusUnauthorized).SendString("Login or password is not valid")
+		return fctx.Status(fiber.StatusUnauthorized).SendString("Login or password is not valid")
 	}
 
 	encodedToken, err := getJwtToken(user)
 	if err != nil {
-		return c.SendStatus(fiber.StatusInternalServerError)
+		return fctx.SendStatus(fiber.StatusInternalServerError)
 	}
-    return c.JSON(fiber.Map{"user": user, "token": encodedToken})
+    return fctx.JSON(fiber.Map{"user": user, "token": encodedToken})
 }

@@ -3,19 +3,19 @@ package query
 import (
 	"context"
 	db "goto/src/database"
-	"goto/src/model"
+	m "goto/src/model"
 )
 
-func GetUser(ctx context.Context, id int) (*model.User, error) {
-	user := model.User{}
+func GetUser(ctx context.Context, id int) (*m.User, error) {
+	user := m.User{}
 	err := db.ConnPool.QueryRow(
 		ctx, "SELECT * FROM \"user\" WHERE id = $1", id,
 	).Scan(&user.Id, &user.Login, &user.Password, &user.IsAdmin)
 	return &user, err
 }
 
-func GetUserByLogin(ctx context.Context, login string) (*model.User, error) {
-	user := model.User{}
+func GetUserByLogin(ctx context.Context, login string) (*m.User, error) {
+	user := m.User{}
 	err := db.ConnPool.QueryRow(
 		ctx, "SELECT * FROM \"user\" WHERE login = $1", login,
 	).Scan(&user.Id, &user.Login, &user.Password, &user.IsAdmin)
@@ -30,7 +30,7 @@ func IsLoginInUse(ctx context.Context, login string) bool {
 	return exists
 }
 
-func CreateUser(ctx context.Context, u *model.User) (*model.User, error) {
+func CreateUser(ctx context.Context, u *m.User) (*m.User, error) {
 	err := db.ConnPool.QueryRow(
 		ctx, `
         INSERT INTO "user" (login, password)
@@ -41,7 +41,7 @@ func CreateUser(ctx context.Context, u *model.User) (*model.User, error) {
 	return u, err
 }
 
-func UpdateUser(ctx context.Context, id int, u *model.User) error {
+func UpdateUser(ctx context.Context, id int, u *m.User) error {
 	_, err := db.ConnPool.Exec(
 		ctx,
 		"UPDATE \"user\" SET login = $1, password = $2 WHERE id = $3",

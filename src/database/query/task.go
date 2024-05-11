@@ -3,14 +3,16 @@ package query
 import (
 	"context"
 	db "goto/src/database"
-	"goto/src/model"
-	"goto/src/utils"
+	f "goto/src/filter"
+	m "goto/src/model"
+	"goto/src/service"
+	u "goto/src/utils"
 
 	"github.com/jackc/pgx/v5"
 )
 
-func readTaskRow(row Scanable) *model.Task {
-	task := model.Task{}
+func readTaskRow(row Scanable) *m.Task {
+	task := m.Task{}
 	err := row.Scan(
 		&task.Id,
 		&task.ProjectId,
@@ -25,8 +27,8 @@ func readTaskRow(row Scanable) *model.Task {
 	return &task
 }
 
-func readTaskRows(rows pgx.Rows) map[int]model.Task {
-	tasksByIds := map[int]model.Task{}
+func readTaskRows(rows pgx.Rows) map[int]m.Task {
+	tasksByIds := map[int]m.Task{}
 	for rows.Next() {
 		task := readTaskRow(rows)
 		tasksByIds[task.Id] = *task
@@ -34,28 +36,24 @@ func readTaskRows(rows pgx.Rows) map[int]model.Task {
 	return tasksByIds
 }
 
-func readTaskRowThenExtend(ctx context.Context, row pgx.Row) *model.Task {
+func readTaskRowThenExtend(ctx context.Context, row pgx.Row) *m.Task {
 	task := readTaskRow(row)
 	if task == nil {
 		return nil
 	}
 	task.Files = getFilesByTasksWithStubs(ctx, []int{task.Id})
-	modules := getModulesByTasks(ctx, []int{task.Id})
-	task.Modules = make([]string, len(modules))
-	for i, m := range modules {
-		task.Modules[i] = m.Name
-	}
+	task.Modules = getModulesByTasks(ctx, []int{task.Id}).Names()
 	return task
 }
 
-func readTaskRowsThenExtendBase(ctx context.Context, rows pgx.Rows, withStubs bool) []model.Task {
+func readTaskRowsThenExtendBase(ctx context.Context, rows pgx.Rows, withStubs bool) m.Tasks {
 	tasksByIds := readTaskRows(rows)
 
-	var taskFiles []model.TaskFile
+	var taskFiles []m.TaskFile
 	if withStubs {
-		taskFiles = getFilesByTasksWithStubs(ctx, utils.MapKeys(tasksByIds))
+		taskFiles = getFilesByTasksWithStubs(ctx, u.MapKeys(tasksByIds))
 	} else {
-		taskFiles = getFilesByTasks(ctx, utils.MapKeys(tasksByIds))
+		taskFiles = getFilesByTasks(ctx, u.MapKeys(tasksByIds))
 	}
 
 	for _, tf := range taskFiles {
@@ -64,86 +62,76 @@ func readTaskRowsThenExtendBase(ctx context.Context, rows pgx.Rows, withStubs bo
 		tasksByIds[tf.TaskId] = task
 	}
 
-	allModules := getModulesByTasks(ctx, utils.MapKeys(tasksByIds))
+	allModules := getModulesByTasks(ctx, u.MapKeys(tasksByIds))
 	for _, m := range allModules {
 		task := tasksByIds[m.TaskId]
 		task.Modules = append(task.Modules, m.Name)
 		tasksByIds[m.TaskId] = task
 	}
 
-	return utils.MapValues(tasksByIds)
+	return u.MapValues(tasksByIds)
 }
 
-func readTaskRowsThenExtend(ctx context.Context, rows pgx.Rows) []model.Task {
+func readTaskRowsThenExtend(ctx context.Context, rows pgx.Rows) m.Tasks {
 	return readTaskRowsThenExtendBase(ctx, rows, false)
 }
 
-func readTaskRowsThenExtendWithStubs(ctx context.Context, rows pgx.Rows) []model.Task {
+func readTaskRowsThenExtendWithStubs(ctx context.Context, rows pgx.Rows) m.Tasks {
 	return readTaskRowsThenExtendBase(ctx, rows, true)
 }
 
-func GetTask(ctx context.Context, id int) *model.Task {
+func GetTask(ctx context.Context, id int) *m.Task {
 	row := db.ConnPool.QueryRow(
 		ctx, `
         SELECT t.*, p.language
-        FROM task as t
-        JOIN project AS p ON p.id = t.project_id
+        FROM task
+        JOIN project ON project.id = task.project_id
         WHERE t.id = $1`,
 		id,
 	)
 	return readTaskRowThenExtend(ctx, row)
 }
 
-func GetUserTasks(ctx context.Context, userId int, pager *utils.Pager) []model.Task {
+func GetAllTasks(ctx context.Context, pager *service.Pager, filter *f.TaskFilter) m.Tasks {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
         SELECT t.*, p.language
-        FROM task as t
-        JOIN project AS p ON p.id = t.project_id
-        WHERE p.user_id = $1`+
+        FROM task
+        JOIN project ON project.id = task.project_id
+        WHERE `+
+			filter.SqlCondition+
 			pager.QuerySuffix(),
-		userId,
+		filter.SqlArgs...,
 	)
 	return readTaskRowsThenExtend(ctx, rows)
 }
 
-func GetAllTasks(ctx context.Context, pager *utils.Pager) []model.Task {
+func getTasksByProjects(ctx context.Context, projectIds []int) m.Tasks {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
         SELECT t.*, p.language
-        FROM task as t
-        JOIN project AS p ON p.id = t.project_id`+
-			pager.QuerySuffix(),
-	)
-	return readTaskRowsThenExtend(ctx, rows)
-}
-
-func getTasksByProjects(ctx context.Context, projectIds []int) []model.Task {
-	rows, _ := db.ConnPool.Query(
-		ctx, `
-        SELECT t.*, p.language
-        FROM task as t
-        JOIN project AS p ON p.id = t.project_id
+        FROM task
+        JOIN project ON project.id = task.project_id
         WHERE p.id = ANY ($1)`,
 		projectIds,
 	)
 	return readTaskRowsThenExtend(ctx, rows)
 }
 
-func getTasksByProjectsWithStubs(ctx context.Context, projectIds []int) []model.Task {
+func getTasksByProjectsWithStubs(ctx context.Context, projectIds []int) m.Tasks {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
         SELECT t.*, p.language
-        FROM task as t
-        JOIN project AS p ON p.id = t.project_id
+        FROM task
+        JOIN project ON project.id = task.project_id
         WHERE p.id = ANY ($1)`,
 		projectIds,
 	)
 	return readTaskRowsThenExtendWithStubs(ctx, rows)
 }
 
-func getFilesByTasks(ctx context.Context, taskIds []int) []model.TaskFile {
-	taskFiles := []model.TaskFile{}
+func getFilesByTasks(ctx context.Context, taskIds []int) []m.TaskFile {
+	taskFiles := []m.TaskFile{}
 
 	rows, _ := db.ConnPool.Query(
 		ctx, `
@@ -153,7 +141,7 @@ func getFilesByTasks(ctx context.Context, taskIds []int) []model.TaskFile {
 	)
 
 	for rows.Next() {
-		tf := model.TaskFile{}
+		tf := m.TaskFile{}
 		rows.Scan(&tf.Id, &tf.TaskId, &tf.Name, &tf.Path)
 		taskFiles = append(taskFiles, tf)
 	}
@@ -161,8 +149,8 @@ func getFilesByTasks(ctx context.Context, taskIds []int) []model.TaskFile {
 	return taskFiles
 }
 
-func getFilesByTasksWithStubs(ctx context.Context, taskIds []int) []model.TaskFile {
-	taskFiles := []model.TaskFile{}
+func getFilesByTasksWithStubs(ctx context.Context, taskIds []int) []m.TaskFile {
+	taskFiles := []m.TaskFile{}
 
 	rows, _ := db.ConnPool.Query(
 		ctx, `
@@ -172,7 +160,7 @@ func getFilesByTasksWithStubs(ctx context.Context, taskIds []int) []model.TaskFi
 	)
 
 	for rows.Next() {
-		tf := model.TaskFile{}
+		tf := m.TaskFile{}
 		rows.Scan(&tf.Id, &tf.TaskId, &tf.Name, &tf.Path, &tf.Stub)
 		taskFiles = append(taskFiles, tf)
 	}
@@ -180,21 +168,21 @@ func getFilesByTasksWithStubs(ctx context.Context, taskIds []int) []model.TaskFi
 	return taskFiles
 }
 
-func getModulesByTasks(ctx context.Context, taskIds []int) []model.Module {
-	modules := []model.Module{}
+func getModulesByTasks(ctx context.Context, taskIds []int) m.Modules {
+	modules := m.Modules{}
 
 	rows, _ := db.ConnPool.Query(
 		ctx, `
 		SELECT m.id, t.id, m.name
-        FROM module AS m
-        JOIN project AS p ON p.id = m.project_id
-        JOIN task AS t ON t.project_id = p.id
+        FROM module
+        JOIN project ON project.id = module.project_id
+        JOIN task ON task.project_id = project.id
         WHERE t.id = ANY ($1)`,
 		taskIds,
 	)
 
 	for rows.Next() {
-		m := model.Module{}
+		m := m.Module{}
 		rows.Scan(&m.Id, &m.TaskId, &m.Name)
 		modules = append(modules, m)
 	}

@@ -1,8 +1,9 @@
-package utils
+package service
 
 import (
 	"archive/zip"
 	"errors"
+	u "goto/src/utils"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,7 +19,7 @@ func Unzip(archivePath string, rootDirLikeArchiveName bool) error {
 
 	destination, archiveName := filepath.Split(archivePath)
 	rootFileName := archive.File[0].Name
-	rootFileNameNew := FileNameWithoutExt(archiveName) + string(os.PathSeparator)
+	rootFileNameNew := u.FileNameWithoutExt(archiveName) + string(os.PathSeparator)
 
 	for _, f := range archive.File {
 		fileName := f.Name

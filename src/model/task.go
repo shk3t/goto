@@ -45,6 +45,17 @@ func (t *Task) Min() *TaskMin {
 	}
 }
 
+type Tasks []Task
+type TasksMin []TaskMin
+
+func (tasks Tasks) Min() TasksMin {
+	tasksMin := make(TasksMin, len(tasks))
+	for i, t := range tasks {
+		tasksMin[i] = *t.Min()
+	}
+	return tasksMin
+}
+
 type TaskFile struct {
 	Id     int    `json:"id"`
 	TaskId int    `json:"taskId"`

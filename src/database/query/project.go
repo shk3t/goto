@@ -3,14 +3,15 @@ package query
 import (
 	"context"
 	db "goto/src/database"
-	"goto/src/model"
-	"goto/src/utils"
+	m "goto/src/model"
+	"goto/src/service"
+	u "goto/src/utils"
 
 	"github.com/jackc/pgx/v5"
 )
 
-func readProjectRow(row Scanable) *model.Project {
-	project := model.Project{}
+func readProjectRow(row Scanable) *m.Project {
+	project := m.Project{}
 	err := row.Scan(
 		&project.Id,
 		&project.UserId,
@@ -27,8 +28,8 @@ func readProjectRow(row Scanable) *model.Project {
 	return &project
 }
 
-func readProjectRows(rows pgx.Rows) map[int]model.Project {
-	projectsByIds := map[int]model.Project{}
+func readProjectRows(rows pgx.Rows) map[int]m.Project {
+	projectsByIds := map[int]m.Project{}
 	for rows.Next() {
 		project := readProjectRow(rows)
 		projectsByIds[project.Id] = *project
@@ -36,52 +37,47 @@ func readProjectRows(rows pgx.Rows) map[int]model.Project {
 	return projectsByIds
 }
 
-func readProjectRowThenExtend(ctx context.Context, row pgx.Row) *model.Project {
+func readProjectRowThenExtend(ctx context.Context, row pgx.Row) *m.Project {
 	project := readProjectRow(row)
 	if project == nil {
 		return nil
 	}
-
 	project.Tasks = getTasksByProjectsWithStubs(ctx, []int{project.Id})
-	modules := getModulesByProjects(ctx, []int{project.Id})
-	project.Modules = make([]string, len(modules))
-	for i, m := range modules {
-		project.Modules[i] = m.Name
-	}
+	project.Modules = getModulesByProjects(ctx, []int{project.Id}).Names()
 	return project
 }
 
-func readProjectRowsThenExtend(ctx context.Context, rows pgx.Rows) []model.Project {
+func readProjectRowsThenExtend(ctx context.Context, rows pgx.Rows) m.Projects {
 	projectsByIds := readProjectRows(rows)
 
-	allTasks := getTasksByProjects(ctx, utils.MapKeys(projectsByIds))
+	allTasks := getTasksByProjects(ctx, u.MapKeys(projectsByIds))
 	for _, t := range allTasks {
 		project := projectsByIds[t.ProjectId]
 		project.Tasks = append(project.Tasks, t)
 		projectsByIds[t.ProjectId] = project
 	}
 
-	allModules := getModulesByProjects(ctx, utils.MapKeys(projectsByIds))
+	allModules := getModulesByProjects(ctx, u.MapKeys(projectsByIds))
 	for _, m := range allModules {
 		project := projectsByIds[m.ProjectId]
 		project.Modules = append(project.Modules, m.Name)
 		projectsByIds[m.ProjectId] = project
 	}
 
-	return utils.MapValues(projectsByIds)
+	return u.MapValues(projectsByIds)
 }
 
-func GetProject(ctx context.Context, id int) *model.Project {
+func GetProject(ctx context.Context, id int) *m.Project {
 	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM project WHERE id = $1", id)
 	return readProjectRowThenExtend(ctx, row)
 }
 
-func GetProjectShallow(ctx context.Context, id int) *model.Project {
+func GetProjectShallow(ctx context.Context, id int) *m.Project {
 	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM project WHERE id = $1", id)
 	return readProjectRow(row)
 }
 
-func GetUserProject(ctx context.Context, id int, userId int) *model.Project {
+func GetUserProject(ctx context.Context, id int, userId int) *m.Project {
 	row := db.ConnPool.QueryRow(
 		ctx,
 		"SELECT * FROM project WHERE id = $1 and user_id = $2",
@@ -90,7 +86,7 @@ func GetUserProject(ctx context.Context, id int, userId int) *model.Project {
 	return readProjectRowThenExtend(ctx, row)
 }
 
-func GetUserProjects(ctx context.Context, userId int, pager *utils.Pager) []model.Project {
+func GetUserProjects(ctx context.Context, userId int, pager *service.Pager) m.Projects {
 	rows, _ := db.ConnPool.Query(
 		ctx,
 		"SELECT * FROM project WHERE user_id = $1"+pager.QuerySuffix(),
@@ -99,8 +95,8 @@ func GetUserProjects(ctx context.Context, userId int, pager *utils.Pager) []mode
 	return readProjectRowsThenExtend(ctx, rows)
 }
 
-func getModulesByProjects(ctx context.Context, projectIds []int) []model.Module {
-	modules := []model.Module{}
+func getModulesByProjects(ctx context.Context, projectIds []int) m.Modules {
+	modules := m.Modules{}
 
 	rows, _ := db.ConnPool.Query(
 		ctx,
@@ -109,7 +105,7 @@ func getModulesByProjects(ctx context.Context, projectIds []int) []model.Module 
 	)
 
 	for rows.Next() {
-		m := model.Module{}
+		m := m.Module{}
 		rows.Scan(&m.Id, &m.ProjectId, &m.Name)
 		modules = append(modules, m)
 	}
@@ -117,7 +113,7 @@ func getModulesByProjects(ctx context.Context, projectIds []int) []model.Module 
 	return modules
 }
 
-func CreateProject(ctx context.Context, p *model.Project) error { // TODO also return project
+func CreateProject(ctx context.Context, p *m.Project) error { // TODO also return project
 	tx, _ := db.ConnPool.BeginTx(ctx, pgx.TxOptions{})
 	defer tx.Rollback(ctx)
 
@@ -170,7 +166,7 @@ func CreateProject(ctx context.Context, p *model.Project) error { // TODO also r
 		return err
 	}
 
-	taskFilesByTaskName := map[string]model.Task{}
+	taskFilesByTaskName := map[string]m.Task{}
 	for _, t := range p.Tasks {
 		taskFilesByTaskName[t.Name] = t
 	}

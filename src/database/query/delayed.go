@@ -3,15 +3,15 @@ package query
 import (
 	"context"
 	db "goto/src/database"
-	"goto/src/model"
-	"goto/src/utils"
+	m "goto/src/model"
+	"goto/src/service"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 )
 
-func readDelayedTaskRow(row Scanable) *model.DelayedTask {
-	delayedTask := model.DelayedTask{}
+func readDelayedTaskRow(row Scanable) *m.DelayedTask {
+	delayedTask := m.DelayedTask{}
 	err := row.Scan(
 		&delayedTask.Id,
 		&delayedTask.UserId,
@@ -28,8 +28,8 @@ func readDelayedTaskRow(row Scanable) *model.DelayedTask {
 	return &delayedTask
 }
 
-func readDelayedTaskRows(rows pgx.Rows) []model.DelayedTask {
-	delayedTasks := []model.DelayedTask{}
+func readDelayedTaskRows(rows pgx.Rows) []m.DelayedTask {
+	delayedTasks := []m.DelayedTask{}
 	for rows.Next() {
 		delayedTask := readDelayedTaskRow(rows)
 		delayedTasks = append(delayedTasks, *delayedTask)
@@ -37,12 +37,12 @@ func readDelayedTaskRows(rows pgx.Rows) []model.DelayedTask {
 	return delayedTasks
 }
 
-func GetDelayedTask(ctx context.Context, id int) *model.DelayedTask {
+func GetDelayedTask(ctx context.Context, id int) *m.DelayedTask {
 	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM delayed_task WHERE id = $1", id)
 	return readDelayedTaskRow(row)
 }
 
-func GetUserDelayedTask(ctx context.Context, id int, userId int) *model.DelayedTask {
+func GetUserDelayedTask(ctx context.Context, id int, userId int) *m.DelayedTask {
 	row := db.ConnPool.QueryRow(
 		ctx,
 		"SELECT * FROM delayed_task WHERE id = $1 AND user_id = $2",
@@ -51,7 +51,7 @@ func GetUserDelayedTask(ctx context.Context, id int, userId int) *model.DelayedT
 	return readDelayedTaskRow(row)
 }
 
-func GetUserDelayedTasks(ctx context.Context, userId int, pager *utils.Pager) []model.DelayedTask {
+func GetUserDelayedTasks(ctx context.Context, userId int, pager *service.Pager) []m.DelayedTask {
 	rows, _ := db.ConnPool.Query(
 		ctx,
 		"SELECT * FROM delayed_task WHERE user_id = $1"+pager.QuerySuffix(),
@@ -60,7 +60,7 @@ func GetUserDelayedTasks(ctx context.Context, userId int, pager *utils.Pager) []
 	return readDelayedTaskRows(rows)
 }
 
-func createDelayedTask(ctx context.Context, dt *model.DelayedTask) {
+func createDelayedTask(ctx context.Context, dt *m.DelayedTask) {
 	db.ConnPool.QueryRow(
 		ctx, `
         INSERT INTO delayed_task (user_id, action, target)
@@ -70,7 +70,7 @@ func createDelayedTask(ctx context.Context, dt *model.DelayedTask) {
 	).Scan(&dt.Id)
 }
 
-func updateDelayedTask(ctx context.Context, dt *model.DelayedTask) {
+func updateDelayedTask(ctx context.Context, dt *m.DelayedTask) {
 	db.ConnPool.Exec(
 		ctx, `
         UPDATE delayed_task
@@ -90,7 +90,7 @@ func cleanupDelayedTasks(ctx context.Context, userId int) {
 	)
 }
 
-func SaveDelayedTask(ctx context.Context, dt *model.DelayedTask) *model.DelayedTask {
+func SaveDelayedTask(ctx context.Context, dt *m.DelayedTask) *m.DelayedTask {
 	cleanupDelayedTasks(ctx, dt.UserId)
 	dt.UpdatedAt = time.Now()
 

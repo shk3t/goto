@@ -33,6 +33,17 @@ func (s *Solution) Min() *SolutionMin {
 	}
 }
 
+type Solutions []Solution
+type SolutionsMin []SolutionMin
+
+func (solutions Solutions) Min() SolutionsMin {
+	solutionsMin := make(SolutionsMin, len(solutions))
+	for i, s := range solutions {
+		solutionsMin[i] = *s.Min()
+	}
+	return solutionsMin
+}
+
 type SolutionFile struct {
 	Id         int
 	SolutionId int

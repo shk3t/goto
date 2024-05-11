@@ -3,15 +3,16 @@ package query
 import (
 	"context"
 	db "goto/src/database"
-	"goto/src/model"
-	"goto/src/utils"
+	m "goto/src/model"
+	"goto/src/service"
+	u "goto/src/utils"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 )
 
-func readSolutionRow(row Scanable) *model.Solution {
-	solution := model.Solution{}
+func readSolutionRow(row Scanable) *m.Solution {
+	solution := m.Solution{}
 	err := row.Scan(
 		&solution.Id,
 		&solution.UserId,
@@ -25,8 +26,8 @@ func readSolutionRow(row Scanable) *model.Solution {
 	return &solution
 }
 
-func readSolutionRowWithResult(row Scanable) *model.Solution {
-	solution := model.Solution{}
+func readSolutionRowWithResult(row Scanable) *m.Solution {
+	solution := m.Solution{}
 	err := row.Scan(
 		&solution.Id,
 		&solution.UserId,
@@ -41,8 +42,8 @@ func readSolutionRowWithResult(row Scanable) *model.Solution {
 	return &solution
 }
 
-func readSolutionRows(rows pgx.Rows) map[int]model.Solution {
-	solutionsByIds := map[int]model.Solution{}
+func readSolutionRows(rows pgx.Rows) map[int]m.Solution {
+	solutionsByIds := map[int]m.Solution{}
 	for rows.Next() {
 		solution := readSolutionRow(rows)
 		solutionsByIds[solution.Id] = *solution
@@ -50,7 +51,7 @@ func readSolutionRows(rows pgx.Rows) map[int]model.Solution {
 	return solutionsByIds
 }
 
-func readSolutionRowThenExtend(ctx context.Context, row pgx.Row) *model.Solution {
+func readSolutionRowThenExtend(ctx context.Context, row pgx.Row) *m.Solution {
 	solution := readSolutionRowWithResult(row)
 	if solution == nil {
 		return nil
@@ -60,23 +61,23 @@ func readSolutionRowThenExtend(ctx context.Context, row pgx.Row) *model.Solution
 	return solution
 }
 
-func readSolutionRowsThenExtend(ctx context.Context, rows pgx.Rows) []model.Solution {
+func readSolutionRowsThenExtend(ctx context.Context, rows pgx.Rows) m.Solutions {
 	solutionsByIds := readSolutionRows(rows)
-	solutionFiles := getFilesBySolutions(ctx, utils.MapKeys(solutionsByIds))
+	solutionFiles := getFilesBySolutions(ctx, u.MapKeys(solutionsByIds))
 	for _, sf := range solutionFiles {
 		solution := solutionsByIds[sf.SolutionId]
 		solution.Files = append(solution.Files, sf)
 		solutionsByIds[sf.SolutionId] = solution
 	}
-	return utils.MapValues(solutionsByIds)
+	return u.MapValues(solutionsByIds)
 }
 
-func GetSolution(ctx context.Context, id int) *model.Solution {
+func GetSolution(ctx context.Context, id int) *m.Solution {
 	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM solution WHERE id = $1", id)
 	return readSolutionRowThenExtend(ctx, row)
 }
 
-func GetUserSolution(ctx context.Context, id int, userId int) *model.Solution {
+func GetUserSolution(ctx context.Context, id int, userId int) *m.Solution {
 	row := db.ConnPool.QueryRow(
 		ctx,
 		"SELECT * FROM solution WHERE id = $1 AND user_id = $2",
@@ -85,18 +86,18 @@ func GetUserSolution(ctx context.Context, id int, userId int) *model.Solution {
 	return readSolutionRowThenExtend(ctx, row)
 }
 
-func GetUserSolutions(ctx context.Context, userId int, pager *utils.Pager) []model.Solution {
+func GetUserSolutions(ctx context.Context, userId int, pager *service.Pager) m.Solutions {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
 		SELECT id, user_id, task_id, status, updated_at
         FROM solution WHERE user_id = $1`+pager.QuerySuffix(),
 		userId,
 	)
-	return utils.MapValues(readSolutionRows(rows))
+	return u.MapValues(readSolutionRows(rows))
 }
 
-func getFilesBySolutions(ctx context.Context, solutionIds []int) []model.SolutionFile {
-	solutionFiles := []model.SolutionFile{}
+func getFilesBySolutions(ctx context.Context, solutionIds []int) []m.SolutionFile {
+	solutionFiles := []m.SolutionFile{}
 
 	rows, _ := db.ConnPool.Query(
 		ctx, `
@@ -106,7 +107,7 @@ func getFilesBySolutions(ctx context.Context, solutionIds []int) []model.Solutio
 	)
 
 	for rows.Next() {
-		sf := model.SolutionFile{}
+		sf := m.SolutionFile{}
 		rows.Scan(&sf.Id, &sf.SolutionId, &sf.Name)
 		solutionFiles = append(solutionFiles, sf)
 	}
@@ -114,8 +115,8 @@ func getFilesBySolutions(ctx context.Context, solutionIds []int) []model.Solutio
 	return solutionFiles
 }
 
-func getFilesBySolutionsWithCode(ctx context.Context, solutionIds []int) []model.SolutionFile {
-	solutionFiles := []model.SolutionFile{}
+func getFilesBySolutionsWithCode(ctx context.Context, solutionIds []int) []m.SolutionFile {
+	solutionFiles := []m.SolutionFile{}
 
 	rows, _ := db.ConnPool.Query(
 		ctx, `
@@ -125,7 +126,7 @@ func getFilesBySolutionsWithCode(ctx context.Context, solutionIds []int) []model
 	)
 
 	for rows.Next() {
-		sf := model.SolutionFile{}
+		sf := m.SolutionFile{}
 		rows.Scan(&sf.Id, &sf.SolutionId, &sf.Name, &sf.Code)
 		solutionFiles = append(solutionFiles, sf)
 	}
@@ -133,7 +134,7 @@ func getFilesBySolutionsWithCode(ctx context.Context, solutionIds []int) []model
 	return solutionFiles
 }
 
-func saveSolutionFiles(ctx context.Context, tx pgx.Tx, s *model.Solution) {
+func saveSolutionFiles(ctx context.Context, tx pgx.Tx, s *m.Solution) {
 	solutionFileEntries := make([][]any, len(s.Files))
 	for i, sf := range s.Files {
 		solutionFileEntries[i] = []any{s.Id, sf.Name, sf.Code}
@@ -146,7 +147,7 @@ func saveSolutionFiles(ctx context.Context, tx pgx.Tx, s *model.Solution) {
 	)
 }
 
-func createSolution(ctx context.Context, tx pgx.Tx, s *model.Solution) {
+func createSolution(ctx context.Context, tx pgx.Tx, s *m.Solution) {
 	tx.QueryRow(
 		ctx, `
         INSERT INTO solution (user_id, task_id, updated_at)
@@ -156,7 +157,7 @@ func createSolution(ctx context.Context, tx pgx.Tx, s *model.Solution) {
 	).Scan(&s.Id)
 }
 
-func updateSolution(ctx context.Context, tx pgx.Tx, s *model.Solution) {
+func updateSolution(ctx context.Context, tx pgx.Tx, s *m.Solution) {
 	tx.Exec(
 		ctx, `
         UPDATE solution
@@ -167,7 +168,7 @@ func updateSolution(ctx context.Context, tx pgx.Tx, s *model.Solution) {
 	)
 }
 
-func SaveSolution(ctx context.Context, s *model.Solution) *model.Solution {
+func SaveSolution(ctx context.Context, s *m.Solution) *m.Solution {
 	tx, _ := db.ConnPool.BeginTx(ctx, pgx.TxOptions{})
 	defer tx.Rollback(ctx)
 	s.UpdatedAt = time.Now()

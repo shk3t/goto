@@ -1,4 +1,4 @@
-package utils
+package service
 
 import (
 	sc "strconv"
@@ -11,9 +11,9 @@ type Pager struct {
 	Take  int
 }
 
-func NewPager(c *fiber.Ctx) *Pager {
-	start, _ := sc.Atoi(c.Query("start"))
-	take, _ := sc.Atoi(c.Query("take"))
+func NewPager(fctx *fiber.Ctx) *Pager {
+	start, _ := sc.Atoi(fctx.Query("start"))
+	take, _ := sc.Atoi(fctx.Query("take"))
 
 	pager := &Pager{Start: start, Take: take}
 	if take == 0 {

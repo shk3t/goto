@@ -3,9 +3,10 @@ package handler
 import (
 	"context"
 	"goto/src/config"
-	"goto/src/database/query"
-	"goto/src/model"
-	"goto/src/utils"
+	q "goto/src/database/query"
+	m "goto/src/model"
+	"goto/src/service"
+	u "goto/src/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,48 +19,43 @@ import (
 	"github.com/google/uuid"
 )
 
-func GetSolutions(c *fiber.Ctx) error {
+func GetSolutions(fctx *fiber.Ctx) error {
 	ctx := context.Background()
-	user := GetCurrentUser(c)
-	pager := utils.NewPager(c)
-	solutions := query.GetUserSolutions(ctx, user.Id, pager)
-
-	response := make([]model.SolutionMin, len(solutions))
-	for i, s := range solutions {
-		response[i] = *s.Min()
-	}
-	return c.JSON(response)
+	user := service.GetCurrentUser(fctx)
+	pager := service.NewPager(fctx)
+	solutions := q.GetUserSolutions(ctx, user.Id, pager)
+	return fctx.JSON(solutions.Min())
 }
 
-func GetSolution(c *fiber.Ctx) error {
+func GetSolution(fctx *fiber.Ctx) error {
 	ctx := context.Background()
-	user := GetCurrentUser(c)
+	user := service.GetCurrentUser(fctx)
 
-	id, err := sc.Atoi(c.Params("id"))
+	id, err := sc.Atoi(fctx.Params("id"))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
+		return fctx.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
 
-	solution := query.GetUserSolution(ctx, id, user.Id)
+	solution := q.GetUserSolution(ctx, id, user.Id)
 	if solution == nil {
-		return c.Status(404).SendString("Solution not found")
+		return fctx.Status(404).SendString("Solution not found")
 	}
 
-	return c.JSON(solution)
+	return fctx.JSON(solution)
 }
 
-func SubmitSolution(c *fiber.Ctx) error {
+func SubmitSolution(fctx *fiber.Ctx) error {
 	ctx := context.Background()
-	user := GetCurrentUser(c)
+	user := service.GetCurrentUser(fctx)
 
-	solutionBody := model.SolutionInput{}
-	if err := c.BodyParser(&solutionBody); err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Bad solution format")
+	solutionBody := m.SolutionInput{}
+	if err := fctx.BodyParser(&solutionBody); err != nil {
+		return fctx.Status(fiber.StatusBadRequest).SendString("Bad solution format")
 	}
 
-	task := query.GetTask(ctx, solutionBody.TaskId)
+	task := q.GetTask(ctx, solutionBody.TaskId)
 	if task == nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Task not found")
+		return fctx.Status(fiber.StatusBadRequest).SendString("Task not found")
 	}
 
 	taskFileNames := make([]string, len(task.Files))
@@ -70,32 +66,32 @@ func SubmitSolution(c *fiber.Ctx) error {
 	for i, sf := range solutionBody.Files {
 		solutionFileNames[i] = sf.Name
 	}
-	missingFileNames := utils.Difference(taskFileNames, solutionFileNames)
+	missingFileNames := u.Difference(taskFileNames, solutionFileNames)
 	if len(missingFileNames) > 0 {
-		return c.Status(fiber.StatusBadRequest).
+		return fctx.Status(fiber.StatusBadRequest).
 			JSON(fiber.Map{"error": "Missing files", "details": missingFileNames})
 	}
 
-	solution := &model.Solution{
+	solution := &m.Solution{
 		UserId: user.Id,
 		TaskId: solutionBody.TaskId,
 		Files:  solutionBody.Files,
 	}
-	solution = query.SaveSolution(ctx, solution)
+	solution = q.SaveSolution(ctx, solution)
 	go checkSolution(solution, task)
 
-	return c.JSON(solution)
+	return fctx.JSON(solution)
 }
 
-func checkSolution(solution *model.Solution, task *model.Task) {
+func checkSolution(solution *m.Solution, task *m.Task) {
 	ctx := context.Background()
 
-	solutionFilesByNames := map[string]model.SolutionFile{}
+	solutionFilesByNames := map[string]m.SolutionFile{}
 	for _, sf := range solution.Files {
 		solutionFilesByNames[sf.Name] = sf
 	}
 
-	project := query.GetProjectShallow(ctx, task.ProjectId)
+	project := q.GetProjectShallow(ctx, task.ProjectId)
 	tempDir := uuid.New().String()
 	projectTempPath := filepath.Join(config.TempPath, tempDir)
 	projectPath := filepath.Join(config.MediaPath, project.Dir)
@@ -130,7 +126,7 @@ func checkSolution(solution *model.Solution, task *model.Task) {
 		upCmd.Env = append(upCmd.Env, "TARGET="+task.RunTarget)
 		upCmd.Dir = projectTempPath
 		output, _ := upCmd.Output()
-		solution.Result = utils.ParseComposeOutput(output, project.Dir)
+		solution.Result = service.ParseComposeOutput(output, project.Dir)
 		downCmd := exec.Command(
 			"docker",
 			"compose",
@@ -145,6 +141,6 @@ func checkSolution(solution *model.Solution, task *model.Task) {
 		exec.Command("docker", "system", "prune", "-f").Run()
 	}
 
-	solution.Status = utils.ParseStatus(solution.Result)
-	query.SaveSolution(ctx, solution)
+	solution.Status = service.ParseStatus(solution.Result)
+	q.SaveSolution(ctx, solution)
 }
