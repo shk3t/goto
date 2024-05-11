@@ -32,4 +32,7 @@ func SetupRoutes(app *fiber.App) {
 	api.Put("/projects", handler.UpdateProject)
 	api.Delete("/projects/:id", handler.DeleteProject)
 	api.Post("/solutions", handler.SubmitSolution)
+
+	api.Get("/delayed-tasks", handler.GetDelayedTasks)
+	api.Get("/delayed-tasks/:id", handler.GetDelayedTask)
 }

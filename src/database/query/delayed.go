@@ -54,7 +54,7 @@ func GetUserDelayedTask(ctx context.Context, id int, userId int) *model.DelayedT
 func GetUserDelayedTasks(ctx context.Context, userId int, pager *utils.Pager) []model.DelayedTask {
 	rows, _ := db.ConnPool.Query(
 		ctx,
-		"SELECT * FROM delayed_task WHERE user_id = $1`+pager.QuerySuffix()",
+		"SELECT * FROM delayed_task WHERE user_id = $1"+pager.QuerySuffix(),
 		userId,
 	)
 	return readDelayedTaskRows(rows)
@@ -71,17 +71,12 @@ func createDelayedTask(ctx context.Context, dt *model.DelayedTask) {
 }
 
 func updateDelayedTask(ctx context.Context, dt *model.DelayedTask) {
-	args := []any{dt.TargetId, dt.Status, dt.Details, dt.UpdatedAt, dt.Id}
-	if dt.TargetId == 0 {
-		args[0] = nil
-	}
-
 	db.ConnPool.Exec(
 		ctx, `
         UPDATE delayed_task
         SET target_id = $1, status = $2, details = $3, updated_at = $4
         WHERE id = $5`,
-		args...,
+		dt.TargetId, dt.Status, dt.Details, dt.UpdatedAt, dt.Id,
 	)
 }
 

@@ -7,7 +7,6 @@ import (
 	"goto/src/database/query"
 	"goto/src/model"
 	"goto/src/utils"
-	"log"
 	"os"
 	"strconv"
 	s "strings"
@@ -59,11 +58,11 @@ func LoadProject(c *fiber.Ctx) error {
 	}
 
 	postfix := uuid.New().String()
-	var projectDir string
+	var delayedTask *model.DelayedTask
 
 	if body.Url != "" {
 		urlParts := s.Split(body.Url, "/")
-		projectDir = urlParts[len(urlParts)-1]
+		projectDir := urlParts[len(urlParts)-1]
 		projectName := projectDir + "_" + postfix
 
 		gitCloneCmd := exec.Command("git", "clone", body.Url, projectName)
@@ -72,7 +71,13 @@ func LoadProject(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid url")
 		}
 
-		go postCreateProject(user, projectName)
+		delayedTask = &model.DelayedTask{
+			UserId: user.Id,
+			Action: "create project",
+			Target: projectDir,
+		}
+		query.SaveDelayedTask(ctx, delayedTask)
+		go postCreateProject(user, delayedTask, projectName)
 
 	} else {
 		file, err := c.FormFile("file")
@@ -88,27 +93,26 @@ func LoadProject(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
 
-		go postCreateProjectZip(user, projectName, archivePath)
+		delayedTask = &model.DelayedTask{
+			UserId: user.Id,
+			Action: "create project",
+			Target: projectDir,
+		}
+		query.SaveDelayedTask(ctx, delayedTask)
+		go postCreateProjectZip(user, delayedTask, projectName, archivePath)
 	}
-
-	delayedTask := &model.DelayedTask{
-		UserId: user.Id,
-		Action: "create project",
-		Target: projectDir,
-	}
-	query.SaveDelayedTask(ctx, delayedTask)
 
 	return c.JSON(delayedTask)
 }
 
-func postCreateProject(user *model.User, projectName string) {
+func postCreateProject(user *model.User, delayedTask *model.DelayedTask, projectName string) {
 	ctx := context.Background()
 
 	projectPath := filepath.Join(config.MediaPath, projectName)
 	gotoConfigPath := filepath.Join(projectPath, config.GotoConfigName)
 	gotoConfig, err := model.LoadGotoConfig(gotoConfigPath)
 	if err != nil {
-		log.Println(err)
+		errorDelayedTask(ctx, delayedTask, err)
 		os.RemoveAll(projectPath)
 		return
 	}
@@ -124,7 +128,7 @@ func postCreateProject(user *model.User, projectName string) {
 		}
 	}
 	if err = query.CreateProject(ctx, project); err != nil {
-		log.Println(err)
+		errorDelayedTask(ctx, delayedTask, err)
 		os.RemoveAll(projectPath)
 		return
 	}
@@ -148,25 +152,49 @@ func postCreateProject(user *model.User, projectName string) {
 	for _, cmd := range prepareCmds {
 		cmd.Dir = projectPath
 		if err = cmd.Run(); err != nil {
-			log.Println(err)
+			errorDelayedTask(ctx, delayedTask, err)
 			query.DeleteProject(ctx, project.Id)
 			os.RemoveAll(projectPath)
 			return
 		}
 	}
+
+    okDelayedTask(ctx, delayedTask, project.Id, "Created")
 }
 
-func postCreateProjectZip(user *model.User, projectName string, archivePath string) {
-	if err := utils.Unzip(archivePath, true); err != nil {
-		log.Println(err)
-		return
-	}
-	if err := os.Remove(archivePath); err != nil {
-		log.Println(err)
-		return
-	}
+func postCreateProjectZip(
+	user *model.User,
+	delayedTask *model.DelayedTask,
+	projectName string,
+	archivePath string,
+) {
+	ctx := context.Background()
 
-	postCreateProject(user, projectName)
+	if err := utils.Unzip(archivePath, true); err != nil {
+		errorDelayedTask(ctx, delayedTask, err)
+		return
+	}
+	os.Remove(archivePath)
+
+	postCreateProject(user, delayedTask, projectName)
+}
+
+func errorDelayedTask(ctx context.Context, delayedTask *model.DelayedTask, err error) {
+	delayedTask.Status = "error"
+	delayedTask.Details = err.Error()
+	query.SaveDelayedTask(ctx, delayedTask)
+}
+
+func okDelayedTask(
+	ctx context.Context,
+	delayedTask *model.DelayedTask,
+	targetId int,
+	details string,
+) {
+	delayedTask.TargetId = &targetId
+	delayedTask.Status = "ok"
+	delayedTask.Details = details
+	query.SaveDelayedTask(ctx, delayedTask)
 }
 
 func UpdateProject(c *fiber.Ctx) error {
