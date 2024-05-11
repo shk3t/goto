@@ -8,8 +8,8 @@ type SolutionInput struct {
 }
 type Solution struct {
 	Id        int            `json:"id"`
-	TaskId    int            `json:"taskId"`
 	UserId    int            `json:"userId"`
+	TaskId    int            `json:"taskId"`
 	Status    string         `json:"status"`
 	Result    string         `json:"result"`
 	UpdatedAt time.Time      `json:"updatedAt"`

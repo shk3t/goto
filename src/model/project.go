@@ -1,35 +1,28 @@
 package model
 
 type ProjectBase struct {
-	Name             string   `json:"name"`
-	Language         string   `json:"language"`
-	Modules          []string `json:"modules"`
-	Containerization string   `json:"containerization"`
-	SrcDir           string   `json:"srcdir"`
-	StubDir          string   `json:"stubdir"`
+	ProjectConfigBase
+	Id     int `json:"id"`
+	UserId int `json:"userId"`
 }
+
 type Project struct {
 	ProjectBase
-	Id    int  `json:"id"`
-	User  User `json:"user"`
 	Dir   string
 	Tasks []Task `json:"tasks"`
 }
 type ProjectPublic struct {
 	ProjectBase
-	Id    int    `json:"id"`
 	Tasks []Task `json:"tasks"`
 }
 type ProjectMin struct {
 	ProjectBase
-	Id    int       `json:"id"`
 	Tasks []TaskMin `json:"tasks"`
 }
 
 func (p *Project) Public() *ProjectPublic {
 	return &ProjectPublic{
 		ProjectBase: p.ProjectBase,
-		Id:          p.Id,
 		Tasks:       p.Tasks,
 	}
 }
@@ -41,7 +34,6 @@ func (p *Project) Min() *ProjectMin {
 
 	return &ProjectMin{
 		ProjectBase: p.ProjectBase,
-		Id:          p.Id,
 		Tasks:       tasks,
 	}
 }

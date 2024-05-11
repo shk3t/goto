@@ -1,25 +1,23 @@
 package model
 
 type TaskBase struct {
-	Id          int      `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Modules     []string `json:"modules"`
+	TaskConfigBase
+	Id        int      `json:"id"`
+	ProjectId int      `json:"projectId"`
+	Modules   []string `json:"modules"`
 }
+
 type Task struct {
 	TaskBase
-	ProjectId int        `json:"projectId"`
 	RunTarget string     `json:"runtarget"`
 	Files     []TaskFile `json:"files"`
 }
 type TaskPrivate struct {
 	TaskBase
-	Description string            `json:"description"`
-	Files       []TaskFilePrivate `json:"files"`
+	Files []TaskFilePrivate `json:"files"`
 }
 type TaskMin struct {
 	TaskBase
-	ProjectId int      `json:"projectId"`
 	FileNames []string `json:"fileNames"`
 }
 
@@ -30,9 +28,8 @@ func (t *Task) Private() *TaskPrivate {
 	}
 
 	return &TaskPrivate{
-		TaskBase:    t.TaskBase,
-		Description: t.Description,
-		Files:       taskFiles,
+		TaskBase: t.TaskBase,
+		Files:    taskFiles,
 	}
 }
 func (t *Task) Min() *TaskMin {
@@ -43,7 +40,6 @@ func (t *Task) Min() *TaskMin {
 
 	return &TaskMin{
 		TaskBase:  t.TaskBase,
-		ProjectId: t.ProjectId,
 		FileNames: fileNames,
 	}
 }

@@ -51,6 +51,7 @@ func GetProject(c *fiber.Ctx) error {
 }
 
 func LoadProject(c *fiber.Ctx) error {
+	ctx := context.Background()
 	user := GetCurrentUser(c)
 	body := struct{ Url string }{}
 	if err := c.BodyParser(&body); err != nil {
@@ -58,11 +59,12 @@ func LoadProject(c *fiber.Ctx) error {
 	}
 
 	postfix := uuid.New().String()
+	var projectDir string
 
 	if body.Url != "" {
 		urlParts := s.Split(body.Url, "/")
-		repoName := urlParts[len(urlParts)-1]
-		projectName := repoName + "_" + postfix
+		projectDir = urlParts[len(urlParts)-1]
+		projectName := projectDir + "_" + postfix
 
 		gitCloneCmd := exec.Command("git", "clone", body.Url, projectName)
 		gitCloneCmd.Dir = config.MediaPath
@@ -78,8 +80,8 @@ func LoadProject(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).SendString("Use `file` as a key for uploaded file")
 		}
 
-		nameLess, extension := utils.SplitExt(file.Filename)
-		projectName := nameLess + "_" + postfix
+		projectDir, extension := utils.SplitExt(file.Filename)
+		projectName := projectDir + "_" + postfix
 
 		archivePath := filepath.Join(config.MediaPath, projectName+extension)
 		if err = c.SaveFile(file, archivePath); err != nil {
@@ -89,7 +91,14 @@ func LoadProject(c *fiber.Ctx) error {
 		go postCreateProjectZip(user, projectName, archivePath)
 	}
 
-	return c.SendStatus(fiber.StatusOK)
+	delayedTask := &model.DelayedTask{
+		UserId: user.Id,
+		Action: "create project",
+		Target: projectDir,
+	}
+	query.SaveDelayedTask(ctx, delayedTask)
+
+	return c.JSON(delayedTask)
 }
 
 func postCreateProject(user *model.User, projectName string) {
@@ -106,7 +115,7 @@ func postCreateProject(user *model.User, projectName string) {
 
 	project := gotoConfig.NewProject()
 	project.Dir = projectName
-	project.User = *user
+	project.UserId = user.Id
 	for _, t := range project.Tasks {
 		for j, tf := range t.Files {
 			stubPath := filepath.Join(config.MediaPath, project.Dir, project.StubDir, tf.Path)

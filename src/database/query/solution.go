@@ -73,7 +73,7 @@ func readSolutionRowsThenExtend(ctx context.Context, rows pgx.Rows) []model.Solu
 
 func GetSolution(ctx context.Context, id int) *model.Solution {
 	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM solution WHERE id = $1", id)
-	return readSolutionRow(row)
+	return readSolutionRowThenExtend(ctx, row)
 }
 
 func GetUserSolution(ctx context.Context, id int, userId int) *model.Solution {
@@ -146,6 +146,16 @@ func saveSolutionFiles(ctx context.Context, tx pgx.Tx, s *model.Solution) {
 	)
 }
 
+func createSolution(ctx context.Context, tx pgx.Tx, s *model.Solution) {
+	tx.QueryRow(
+		ctx, `
+        INSERT INTO solution (user_id, task_id, updated_at)
+        VALUES ($1, $2, $3)
+        RETURNING id`,
+		s.UserId, s.TaskId, s.UpdatedAt,
+	).Scan(&s.Id)
+}
+
 func updateSolution(ctx context.Context, tx pgx.Tx, s *model.Solution) {
 	tx.Exec(
 		ctx, `
@@ -172,13 +182,7 @@ func SaveSolution(ctx context.Context, s *model.Solution) *model.Solution {
 		).Scan(&s.Id)
 
 		if s.Id == 0 {
-			tx.QueryRow(
-				ctx, `
-                INSERT INTO solution (user_id, task_id, updated_at)
-                VALUES ($1, $2, $3)
-                RETURNING id`,
-				s.UserId, s.TaskId, s.UpdatedAt,
-			).Scan(&s.Id)
+			createSolution(ctx, tx, s)
 		} else {
 			updateSolution(ctx, tx, s)
 		}

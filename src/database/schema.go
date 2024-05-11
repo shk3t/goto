@@ -74,6 +74,19 @@ func InitSchema(ctx context.Context) {
             code TEXT NOT NULL,
             UNIQUE(solution_id, name)
         )`,
+
+		`
+        CREATE TABLE IF NOT EXISTS delayed_task (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+            target_id INTEGER,
+            action VARCHAR(256) NOT NULL,
+            target VARCHAR(256) NOT NULL,
+            status VARCHAR(64) NOT NULL DEFAULT 'processing',
+            details TEXT NOT NULL DEFAULT '',
+            updated_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(user_id, task_id)
+        )`,
 	}
 
 	for _, tableDef := range tableDefinitions {

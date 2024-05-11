@@ -9,28 +9,39 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+type TaskConfigBase struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
 type TaskConfig struct {
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	RunTarget   string     `json:"runtarget"`
-	Files       []TaskFile `json:"files"`
+	TaskConfigBase
+	RunTarget string     `json:"runtarget"`
+	Files     []TaskFile `json:"files"`
 }
 
 func (tc *TaskConfig) Task() *Task {
 	return &Task{
-		TaskBase:  TaskBase{Name: tc.Name, Description: tc.Description},
+		TaskBase:  TaskBase{TaskConfigBase: tc.TaskConfigBase},
 		RunTarget: tc.RunTarget,
 		Files:     tc.Files,
 	}
 }
 
+type ProjectConfigBase struct {
+	Name             string   `json:"name"`
+	Language         string   `json:"language"`
+	Modules          []string `json:"modules"`
+	Containerization string   `json:"containerization"`
+	SrcDir           string   `json:"srcdir"`
+	StubDir          string   `json:"stubdir"`
+}
 type GotoConfig struct {
-	ProjectBase
+	ProjectConfigBase
 	TaskConfigs []TaskConfig
 }
 
 func (cfg *GotoConfig) NewProject() *Project {
-	p := Project{ProjectBase: cfg.ProjectBase}
+	p := Project{ProjectBase: ProjectBase{ProjectConfigBase: cfg.ProjectConfigBase}}
 	p.Tasks = make([]Task, len(cfg.TaskConfigs))
 	for i, tc := range cfg.TaskConfigs {
 		p.Tasks[i] = *tc.Task()
@@ -77,9 +88,11 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 
 	for i, tc := range taskConfigs {
 		taskConfig := TaskConfig{
-			Name:        tc["name"].(string),
-			Description: utils.GetAssertDefault(tc, "description", ""),
-			RunTarget:   utils.GetAssertDefault(tc, "runtarget", ""),
+			TaskConfigBase: TaskConfigBase{
+				Name:        tc["name"].(string),
+				Description: utils.GetAssertDefault(tc, "description", ""),
+			},
+			RunTarget: utils.GetAssertDefault(tc, "runtarget", ""),
 		}
 		cfg.TaskConfigs[i] = taskConfig
 		taskNames[i] = tc["name"].(string)

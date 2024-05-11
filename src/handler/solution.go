@@ -77,9 +77,9 @@ func SubmitSolution(c *fiber.Ctx) error {
 	}
 
 	solution := &model.Solution{
+		UserId: user.Id,
 		TaskId: solutionBody.TaskId,
 		Files:  solutionBody.Files,
-		UserId: user.Id,
 	}
 	solution = query.SaveSolution(ctx, solution)
 	go checkSolution(solution, task)

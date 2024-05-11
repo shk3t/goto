@@ -13,7 +13,7 @@ func readProjectRow(row Scanable) *model.Project {
 	project := model.Project{}
 	err := row.Scan(
 		&project.Id,
-		&project.User.Id,
+		&project.UserId,
 		&project.Dir,
 		&project.Name,
 		&project.Language,
@@ -122,7 +122,7 @@ func CreateProject(ctx context.Context, p *model.Project) error { // TODO also r
 	defer tx.Rollback(ctx)
 
 	projectEntries := [][]any{
-		{p.User.Id, p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir},
+		{p.UserId, p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir},
 	}
 	_, err := tx.CopyFrom(
 		ctx,
