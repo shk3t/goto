@@ -83,10 +83,10 @@ func readTaskRowsThenExtendWithStubs(ctx context.Context, rows pgx.Rows) m.Tasks
 func GetTask(ctx context.Context, id int) *m.Task {
 	row := db.ConnPool.QueryRow(
 		ctx, `
-        SELECT t.*, p.language
+        SELECT task.*, project.language
         FROM task
         JOIN project ON project.id = task.project_id
-        WHERE t.id = $1`,
+        WHERE task.id = $1`,
 		id,
 	)
 	return readTaskRowThenExtend(ctx, row)
@@ -95,10 +95,10 @@ func GetTask(ctx context.Context, id int) *m.Task {
 func GetAllTasks(ctx context.Context, pager *service.Pager, filter *f.TaskFilter) m.Tasks {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
-        SELECT t.*, p.language
+        SELECT task.*, project.language
         FROM task
         JOIN project ON project.id = task.project_id
-        WHERE `+
+        WHERE`+
 			filter.SqlCondition+
 			pager.QuerySuffix(),
 		filter.SqlArgs...,
@@ -109,10 +109,10 @@ func GetAllTasks(ctx context.Context, pager *service.Pager, filter *f.TaskFilter
 func getTasksByProjects(ctx context.Context, projectIds []int) m.Tasks {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
-        SELECT t.*, p.language
+        SELECT task.*, project.language
         FROM task
         JOIN project ON project.id = task.project_id
-        WHERE p.id = ANY ($1)`,
+        WHERE project.id = ANY ($1)`,
 		projectIds,
 	)
 	return readTaskRowsThenExtend(ctx, rows)
@@ -121,10 +121,10 @@ func getTasksByProjects(ctx context.Context, projectIds []int) m.Tasks {
 func getTasksByProjectsWithStubs(ctx context.Context, projectIds []int) m.Tasks {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
-        SELECT t.*, p.language
+        SELECT task.*, project.language
         FROM task
         JOIN project ON project.id = task.project_id
-        WHERE p.id = ANY ($1)`,
+        WHERE project.id = ANY ($1)`,
 		projectIds,
 	)
 	return readTaskRowsThenExtendWithStubs(ctx, rows)
@@ -173,11 +173,11 @@ func getModulesByTasks(ctx context.Context, taskIds []int) m.Modules {
 
 	rows, _ := db.ConnPool.Query(
 		ctx, `
-		SELECT m.id, t.id, m.name
+		SELECT module.id, task.id, module.name
         FROM module
         JOIN project ON project.id = module.project_id
         JOIN task ON task.project_id = project.id
-        WHERE t.id = ANY ($1)`,
+        WHERE task.id = ANY ($1)`,
 		taskIds,
 	)
 

@@ -31,17 +31,17 @@ func NewTaskFilter(fctx *fiber.Ctx) *TaskFilter {
 	}
 
 	filterEntries := []FilterEntry{
-		{tf.Name != "", tf.Name, "project.name LIKE %$%v%"},
-		{tf.Language != "", tf.Language, "project.language LIKE %$v%"},
+		{tf.Name != "", tf.Name, "task.name LIKE '%%' || $%d || '%%'"},
+		{tf.Language != "", tf.Language, "project.language LIKE '%%' || $%d || '%%'"},
 		{
 			tf.Module != "",
 			tf.Module,
-			"project.id IN (SELECT project_id FROM module WHERE name LIKE %$%d%)",
+			"project.id IN (SELECT project_id FROM module WHERE name LIKE '%%' || $%d || '%%')",
 		},
 		{tf.My, tf.UserId, "project.user_id = $%d"},
 	}
 
-	i := 0
+	i := 1
 	conditions := []string{}
 	for _, fe := range filterEntries {
 		if fe.IsActive {
@@ -51,7 +51,11 @@ func NewTaskFilter(fctx *fiber.Ctx) *TaskFilter {
 		}
 	}
 
-	tf.SqlCondition = s.Join(conditions, " AND\n")
+	if len(conditions) > 0 {
+		tf.SqlCondition = " " + s.Join(conditions, " AND\n")
+	} else {
+		tf.SqlCondition = " TRUE"
+	}
 
 	return &tf
 }
