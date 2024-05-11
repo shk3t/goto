@@ -8,7 +8,7 @@ import (
 	"goto/src/model"
 	"goto/src/utils"
 	"os"
-	"strconv"
+	sc "strconv"
 	s "strings"
 
 	"os/exec"
@@ -36,7 +36,7 @@ func GetProject(c *fiber.Ctx) error {
 	ctx := context.Background()
 	user := GetCurrentUser(c)
 
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := sc.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
@@ -117,7 +117,7 @@ func postCreateProject(user *model.User, delayedTask *model.DelayedTask, project
 		return
 	}
 
-	project := gotoConfig.NewProject()
+	project := gotoConfig.Project()
 	project.Dir = projectName
 	project.UserId = user.Id
 	for _, t := range project.Tasks {
@@ -126,11 +126,6 @@ func postCreateProject(user *model.User, delayedTask *model.DelayedTask, project
 			stubBytes, _ := os.ReadFile(stubPath)
 			t.Files[j].Stub = string(stubBytes)
 		}
-	}
-	if err = query.CreateProject(ctx, project); err != nil {
-		errorDelayedTask(ctx, delayedTask, err)
-		os.RemoveAll(projectPath)
-		return
 	}
 
 	var prepareCmds []*exec.Cmd
@@ -145,7 +140,9 @@ func postCreateProject(user *model.User, delayedTask *model.DelayedTask, project
 			exec.Command("docker", "compose", "build"),
 		}
 	default:
-		err = errors.New("Specified containerization type is not implemented")
+		err = errors.New("Specified containerization type is not supported")
+		errorDelayedTask(ctx, delayedTask, err)
+		deleteProject(ctx, project)
 		return
 	}
 
@@ -153,13 +150,18 @@ func postCreateProject(user *model.User, delayedTask *model.DelayedTask, project
 		cmd.Dir = projectPath
 		if err = cmd.Run(); err != nil {
 			errorDelayedTask(ctx, delayedTask, err)
-			query.DeleteProject(ctx, project.Id)
-			os.RemoveAll(projectPath)
+			deleteProject(ctx, project)
 			return
 		}
 	}
 
-    okDelayedTask(ctx, delayedTask, project.Id, "Created")
+	if err = query.CreateProject(ctx, project); err != nil {
+		errorDelayedTask(ctx, delayedTask, err)
+		deleteProject(ctx, project)
+		return
+	}
+
+	okDelayedTask(ctx, delayedTask, project.Id, "Created")  // TODO return good Id
 }
 
 func postCreateProjectZip(
@@ -204,7 +206,7 @@ func UpdateProject(c *fiber.Ctx) error {
 func DeleteProject(c *fiber.Ctx) error {
 	ctx := context.Background()
 
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := sc.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}
@@ -214,10 +216,21 @@ func DeleteProject(c *fiber.Ctx) error {
 	if project == nil {
 		return c.Status(404).SendString("Project not found")
 	}
-	projectPath := filepath.Join(config.MediaPath, project.Dir)
 
-	query.DeleteProject(ctx, id)
+	deleteProject(ctx, project)
 
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func deleteProject(ctx context.Context, project *model.Project) {
+	if project.Id != 0 {
+		query.DeleteProject(ctx, project.Id)
+	}
+    cleanupContainers(project)
+	os.RemoveAll(filepath.Join(config.MediaPath, project.Dir))
+}
+
+func cleanupContainers(project *model.Project) {
 	switch project.Containerization {
 	case "docker":
 		exec.Command("docker", "image", "remove", "-f", project.Dir).Run()
@@ -232,12 +245,8 @@ func DeleteProject(c *fiber.Ctx) error {
 			"-v",
 			"--remove-orphans",
 		)
-		removeCmd.Dir = projectPath
+		removeCmd.Dir = filepath.Join(config.MediaPath, project.Dir)
 		removeCmd.Run()
 		exec.Command("docker", "system", "prune", "-f").Run()
 	}
-
-	os.RemoveAll(projectPath)
-
-	return c.SendStatus(fiber.StatusOK)
 }

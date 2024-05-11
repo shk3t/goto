@@ -4,7 +4,7 @@ import (
 	"context"
 	"goto/src/database/query"
 	"goto/src/utils"
-	"strconv"
+	sc "strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -21,7 +21,7 @@ func GetDelayedTask(c *fiber.Ctx) error {
 	ctx := context.Background()
 	user := GetCurrentUser(c)
 
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := sc.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"goto/src/utils"
 	"os"
+	sc "strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -40,7 +41,7 @@ type GotoConfig struct {
 	TaskConfigs []TaskConfig
 }
 
-func (cfg *GotoConfig) NewProject() *Project {
+func (cfg *GotoConfig) Project() *Project {
 	p := Project{ProjectBase: ProjectBase{ProjectConfigBase: cfg.ProjectConfigBase}}
 	p.Tasks = make([]Task, len(cfg.TaskConfigs))
 	for i, tc := range cfg.TaskConfigs {
@@ -65,48 +66,74 @@ func LoadGotoConfig(configPath string) (*GotoConfig, error) {
 }
 
 func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
+	var err error
+	var ok bool
 	fatalError = errors.New("Bad config file format")
 	defer func() { recover() }()
 
 	d, _ := data.(map[string]any)
 
-	cfg.Name = d["name"].(string)
-	cfg.Language = d["language"].(string)
+	cfg.Name, err = utils.GetAssertError[string](d, "name", "")
+	if err != nil {
+		return err
+	}
+	cfg.Language, err = utils.GetAssertError[string](d, "language", "")
+	if err != nil {
+		return err
+	}
 	cfg.Containerization = utils.GetAssertDefault(d, "containerization", "docker")
 	cfg.SrcDir = utils.GetAssertDefault(d, "srcdir", "src")
 	cfg.StubDir = utils.GetAssertDefault(d, "stubdir", "stubs")
 
-	packs := d["modules"].([]any)
-	cfg.Modules = make([]string, len(packs))
-	for i, p := range packs {
-		cfg.Modules[i] = p.(string)
+	modules, err := utils.GetAssertError[[]any](d, "modules", "")
+	if err != nil {
+		return err
 	}
 
-	taskConfigs := d["tasks"].([]map[string]any)
+	cfg.Modules = make([]string, len(modules))
+	for i, m := range modules {
+		cfg.Modules[i], ok = m.(string)
+		if !ok {
+			return errors.New("`modules` has bad format")
+		}
+	}
+
+	taskConfigs, err := utils.GetAssertError[[]map[string]any](d, "tasks", "")
+	if err != nil {
+		return err
+	}
 	cfg.TaskConfigs = make([]TaskConfig, len(taskConfigs))
 	taskNames := make([]string, len(taskConfigs))
 
 	for i, tc := range taskConfigs {
+		taskName, err := utils.GetAssertError[string](tc, "name", sc.Itoa(i+1)+" task")
+		if err != nil {
+			return err
+		}
 		taskConfig := TaskConfig{
 			TaskConfigBase: TaskConfigBase{
-				Name:        tc["name"].(string),
+				Name:        taskName,
 				Description: utils.GetAssertDefault(tc, "description", ""),
 			},
 			RunTarget: utils.GetAssertDefault(tc, "runtarget", ""),
 		}
 		cfg.TaskConfigs[i] = taskConfig
-		taskNames[i] = tc["name"].(string)
+		taskNames[i] = taskName
 
-		taskFiles := tc["files"].(any)
+		taskFiles, err := utils.GetAssertError[any](tc, "files", taskName+" task")
 		cfg.TaskConfigs[i].Files = []TaskFile{}
 
 		switch taskFiles.(type) {
 		case []any:
-			taskFileNames := make([]string, len(taskFiles.([]any)))
-			cfg.TaskConfigs[i].Files = make([]TaskFile, len(taskFiles.([]any)))
+			taskFiles := taskFiles.([]any)
+			taskFileNames := make([]string, len(taskFiles))
+			cfg.TaskConfigs[i].Files = make([]TaskFile, len(taskFiles))
 
-			for j, tf := range taskFiles.([]any) {
-				path := tf.(string)
+			for j, tf := range taskFiles {
+				path, ok := tf.(string)
+				if !ok {
+					return errors.New(taskName + " task, " + sc.Itoa(j+1) + " file: `path` has bad format")
+				}
 				pathParts := strings.Split(path, string(os.PathSeparator))
 				name := pathParts[len(pathParts)-1]
 
@@ -117,13 +144,20 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 			}
 
 			if !utils.UniqueOnly(&taskFileNames) {
-				return errors.New("Conflicting task file names. You should specify them.")
+				return errors.New(taskName + " task: conflicting file names; you should specify them via hashtable.")
 			}
 		case map[string]any:
-			for name, path := range taskFiles.(map[string]any) {
-				task := TaskFile{Name: name, Path: path.(string)}
+			taskFiles := taskFiles.(map[string]any)
+			for name, path := range taskFiles {
+				path, ok := path.(string)
+				if !ok {
+					return errors.New(taskName + " task, " + name + " file: `path` has bad format")
+				}
+				task := TaskFile{Name: name, Path: path}
 				cfg.TaskConfigs[i].Files = append(cfg.TaskConfigs[i].Files, task)
 			}
+		default:
+			return errors.New(taskName + " task: `files` has bad format")
 		}
 
 	}

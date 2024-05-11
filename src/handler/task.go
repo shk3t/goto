@@ -5,7 +5,7 @@ import (
 	"goto/src/database/query"
 	"goto/src/model"
 	"goto/src/utils"
-	"strconv"
+	sc "strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,7 +15,7 @@ func GetTasks(c *fiber.Ctx) error {
 	user := GetCurrentUser(c)
 	pager := utils.NewPager(c)
 
-	my, _ := strconv.ParseBool(c.Query("my"))
+	my, _ := sc.ParseBool(c.Query("my"))
 
 	tasks := []model.Task{}
 	if my {
@@ -34,7 +34,7 @@ func GetTasks(c *fiber.Ctx) error {
 func GetTask(c *fiber.Ctx) error {
 	ctx := context.Background()
 
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := sc.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}

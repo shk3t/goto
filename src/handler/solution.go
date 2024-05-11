@@ -9,7 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
+	sc "strconv"
 	s "strings"
 
 	cp "github.com/otiai10/copy"
@@ -35,7 +35,7 @@ func GetSolution(c *fiber.Ctx) error {
 	ctx := context.Background()
 	user := GetCurrentUser(c)
 
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := sc.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 	}

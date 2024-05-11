@@ -17,6 +17,7 @@ func readTaskRow(row Scanable) *model.Task {
 		&task.Name,
 		&task.Description,
 		&task.RunTarget,
+		&task.Language,
 	)
 	if err != nil {
 		return nil
@@ -82,28 +83,48 @@ func readTaskRowsThenExtendWithStubs(ctx context.Context, rows pgx.Rows) []model
 }
 
 func GetTask(ctx context.Context, id int) *model.Task {
-	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM task WHERE id = $1", id)
+	row := db.ConnPool.QueryRow(
+		ctx, `
+        SELECT t.*, p.language
+        FROM task as t
+        JOIN project AS p ON p.id = t.project_id
+        WHERE t.id = $1`,
+		id,
+	)
 	return readTaskRowThenExtend(ctx, row)
 }
 
 func GetUserTasks(ctx context.Context, userId int, pager *utils.Pager) []model.Task {
 	rows, _ := db.ConnPool.Query(
-		ctx,
-		"SELECT * FROM task WHERE user_id = $1"+pager.QuerySuffix(),
+		ctx, `
+        SELECT t.*, p.language
+        FROM task as t
+        JOIN project AS p ON p.id = t.project_id
+        WHERE p.user_id = $1`+
+			pager.QuerySuffix(),
 		userId,
 	)
 	return readTaskRowsThenExtend(ctx, rows)
 }
 
 func GetAllTasks(ctx context.Context, pager *utils.Pager) []model.Task {
-	rows, _ := db.ConnPool.Query(ctx, "SELECT * FROM task"+pager.QuerySuffix())
+	rows, _ := db.ConnPool.Query(
+		ctx, `
+        SELECT t.*, p.language
+        FROM task as t
+        JOIN project AS p ON p.id = t.project_id`+
+			pager.QuerySuffix(),
+	)
 	return readTaskRowsThenExtend(ctx, rows)
 }
 
 func getTasksByProjects(ctx context.Context, projectIds []int) []model.Task {
 	rows, _ := db.ConnPool.Query(
-		ctx,
-		"SELECT * FROM task WHERE project_id = ANY ($1)",
+		ctx, `
+        SELECT t.*, p.language
+        FROM task as t
+        JOIN project AS p ON p.id = t.project_id
+        WHERE p.id = ANY ($1)`,
 		projectIds,
 	)
 	return readTaskRowsThenExtend(ctx, rows)
@@ -111,8 +132,11 @@ func getTasksByProjects(ctx context.Context, projectIds []int) []model.Task {
 
 func getTasksByProjectsWithStubs(ctx context.Context, projectIds []int) []model.Task {
 	rows, _ := db.ConnPool.Query(
-		ctx,
-		"SELECT * FROM task WHERE project_id = ANY ($1)",
+		ctx, `
+        SELECT t.*, p.language
+        FROM task as t
+        JOIN project AS p ON p.id = t.project_id
+        WHERE p.id = ANY ($1)`,
 		projectIds,
 	)
 	return readTaskRowsThenExtendWithStubs(ctx, rows)

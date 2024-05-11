@@ -4,6 +4,7 @@ type TaskBase struct {
 	TaskConfigBase
 	Id        int      `json:"id"`
 	ProjectId int      `json:"projectId"`
+	Language  string   `json:"language"`
 	Modules   []string `json:"modules"`
 }
 
