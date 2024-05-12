@@ -12,3 +12,5 @@ type DelayedTask struct {
 	Details   string    `json:"details"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+type DelayedTasks []DelayedTask

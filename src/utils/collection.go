@@ -22,13 +22,27 @@ func Difference(left []string, right []string) []string {
 	for _, x := range right {
 		rightMap[x] = struct{}{}
 	}
-	diff := []string{}
+	result := []string{}
 	for _, x := range left {
 		if _, found := rightMap[x]; !found {
-			diff = append(diff, x)
+			result = append(result, x)
 		}
 	}
-	return diff
+	return result
+}
+
+func Intersection[T comparable](left []T, right []T) []T {
+	result := []T{}
+	leftMap := make(map[T]struct{})
+	for _, v := range left {
+		leftMap[v] = struct{}{}
+	}
+	for _, v := range right {
+		if _, ok := leftMap[v]; ok {
+			result = append(result, v)
+		}
+	}
+	return result
 }
 
 func MapKeys[K comparable, V any](data map[K]V) []K {

@@ -9,15 +9,15 @@ type ProjectBase struct {
 type Project struct {
 	ProjectBase
 	Dir   string
-	Tasks []Task `json:"tasks"`
+	Tasks Tasks `json:"tasks"`
 }
 type ProjectPublic struct {
 	ProjectBase
-	Tasks []Task `json:"tasks"`
+	Tasks Tasks `json:"tasks"`
 }
 type ProjectMin struct {
 	ProjectBase
-	Tasks []TaskMin `json:"tasks"`
+	Tasks TasksMin `json:"tasks"`
 }
 
 func (p *Project) Public() *ProjectPublic {
@@ -27,7 +27,7 @@ func (p *Project) Public() *ProjectPublic {
 	}
 }
 func (p *Project) Min() *ProjectMin {
-	tasks := make([]TaskMin, len(p.Tasks))
+	tasks := make(TasksMin, len(p.Tasks))
 	for i, t := range p.Tasks {
 		tasks[i] = *t.Min()
 	}

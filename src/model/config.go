@@ -11,13 +11,14 @@ import (
 )
 
 type TaskConfigBase struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string
+	Description string
 }
 type TaskConfig struct {
 	TaskConfigBase
-	RunTarget string     `json:"runtarget"`
-	Files     []TaskFile `json:"files"`
+	RunTarget string
+	Files     TaskFiles
+	OldName   string
 }
 
 func (tc *TaskConfig) Task() *Task {
@@ -28,23 +29,25 @@ func (tc *TaskConfig) Task() *Task {
 	}
 }
 
+type TaskConfigs []TaskConfig
+
 type ProjectConfigBase struct {
-	Name             string   `json:"name"`
-	Language         string   `json:"language"`
-	Modules          []string `json:"modules"`
-	Containerization string   `json:"containerization"`
-	SrcDir           string   `json:"srcdir"`
-	StubDir          string   `json:"stubdir"`
+	Name             string
+	Language         string
+	Modules          []string
+	Containerization string
+	SrcDir           string
+	StubDir          string
 }
 type GotoConfig struct {
 	ProjectConfigBase
-	TaskConfigs []TaskConfig
+	TaskConfigs TaskConfigs
 }
 
 func (cfg *GotoConfig) Project() *Project {
 	p := Project{}
 	p.ProjectConfigBase = cfg.ProjectConfigBase
-	p.Tasks = make([]Task, len(cfg.TaskConfigs))
+	p.Tasks = make(Tasks, len(cfg.TaskConfigs))
 	for i, tc := range cfg.TaskConfigs {
 		p.Tasks[i] = *tc.Task()
 	}
@@ -103,7 +106,7 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 	if err != nil {
 		return err
 	}
-	cfg.TaskConfigs = make([]TaskConfig, len(taskConfigs))
+	cfg.TaskConfigs = make(TaskConfigs, len(taskConfigs))
 	taskNames := make([]string, len(taskConfigs))
 
 	for i, tc := range taskConfigs {
@@ -117,18 +120,19 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 				Description: u.GetAssertDefault(tc, "description", ""),
 			},
 			RunTarget: u.GetAssertDefault(tc, "runtarget", ""),
+			OldName:   u.GetAssertDefault(tc, "oldname", ""),
 		}
 		cfg.TaskConfigs[i] = taskConfig
 		taskNames[i] = taskName
 
 		taskFiles, err := u.GetAssertError[any](tc, "files", taskName+" task")
-		cfg.TaskConfigs[i].Files = []TaskFile{}
+		cfg.TaskConfigs[i].Files = TaskFiles{}
 
 		switch taskFiles.(type) {
 		case []any:
 			taskFiles := taskFiles.([]any)
 			taskFileNames := make([]string, len(taskFiles))
-			cfg.TaskConfigs[i].Files = make([]TaskFile, len(taskFiles))
+			cfg.TaskConfigs[i].Files = make(TaskFiles, len(taskFiles))
 
 			for j, tf := range taskFiles {
 				path, ok := tf.(string)

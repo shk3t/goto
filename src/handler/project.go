@@ -46,15 +46,41 @@ func GetProject(fctx *fiber.Ctx) error {
 }
 
 func LoadProject(fctx *fiber.Ctx) error {
+	delayedTask, err := saveProject(fctx)
+	if err != nil {
+		return err
+	}
+	return fctx.JSON(delayedTask)
+}
+
+func UpdateProject(fctx *fiber.Ctx) error {
+	delayedTask, err := saveProject(fctx)
+	if err != nil {
+		return err
+	}
+	return fctx.JSON(delayedTask)
+}
+
+func saveProject(fctx *fiber.Ctx) (*m.DelayedTask, error) {
 	ctx := context.Background()
 	user := service.GetCurrentUser(fctx)
+
+	id, err := sc.Atoi(fctx.Params("id"))
+	if err != nil && fctx.Method() == "PUT" {
+		return nil, fctx.Status(fiber.StatusBadRequest).SendString("Id is not correct")
+	}
+
 	body := struct{ Url string }{}
 	if err := fctx.BodyParser(&body); err != nil {
-		return fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return nil, fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
 	postfix := uuid.New().String()
 	var delayedTask *m.DelayedTask
+	action := "update"
+	if id == 0 {
+		action = "create"
+	}
 
 	if body.Url != "" {
 		urlParts := s.Split(body.Url, "/")
@@ -64,21 +90,21 @@ func LoadProject(fctx *fiber.Ctx) error {
 		gitCloneCmd := exec.Command("git", "clone", body.Url, projectName)
 		gitCloneCmd.Dir = config.MediaPath
 		if err := gitCloneCmd.Run(); err != nil {
-			return fctx.Status(fiber.StatusBadRequest).SendString("Invalid url")
+			return nil, fctx.Status(fiber.StatusBadRequest).SendString("Invalid url")
 		}
 
 		delayedTask = &m.DelayedTask{
 			UserId: user.Id,
-			Action: "create project",
+			Action: action + " project",
 			Target: projectDir,
 		}
 		q.SaveDelayedTask(ctx, delayedTask)
-		go postCreateProject(user, delayedTask, projectName)
+		go postSaveProject(id, projectName, delayedTask)
 
 	} else {
 		file, err := fctx.FormFile("file")
 		if err != nil {
-			return fctx.Status(fiber.StatusBadRequest).SendString("Use `file` as a key for uploaded file")
+			return nil, fctx.Status(fiber.StatusBadRequest).SendString("Use `file` as a key for uploaded file")
 		}
 
 		projectDir, extension := u.SplitExt(file.Filename)
@@ -86,22 +112,22 @@ func LoadProject(fctx *fiber.Ctx) error {
 
 		archivePath := filepath.Join(config.MediaPath, projectName+extension)
 		if err = fctx.SaveFile(file, archivePath); err != nil {
-			return fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return nil, fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
 
 		delayedTask = &m.DelayedTask{
 			UserId: user.Id,
-			Action: "create project",
+			Action: action + " project",
 			Target: projectDir,
 		}
 		q.SaveDelayedTask(ctx, delayedTask)
-		go postCreateProjectZip(user, delayedTask, projectName, archivePath)
+		go postSaveProjectZip(id, projectName, delayedTask, archivePath)
 	}
 
-	return fctx.JSON(delayedTask)
+	return delayedTask, nil
 }
 
-func postCreateProject(user *m.User, delayedTask *m.DelayedTask, projectName string) {
+func postSaveProject(projectId int, projectName string, delayedTask *m.DelayedTask) {
 	ctx := context.Background()
 
 	projectPath := filepath.Join(config.MediaPath, projectName)
@@ -114,8 +140,9 @@ func postCreateProject(user *m.User, delayedTask *m.DelayedTask, projectName str
 	}
 
 	project := gotoConfig.Project()
+	project.Id = projectId
 	project.Dir = projectName
-	project.UserId = user.Id
+	project.UserId = delayedTask.UserId
 	for _, t := range project.Tasks {
 		for j, tf := range t.Files {
 			stubPath := filepath.Join(config.MediaPath, project.Dir, project.StubDir, tf.Path)
@@ -138,7 +165,7 @@ func postCreateProject(user *m.User, delayedTask *m.DelayedTask, projectName str
 	default:
 		err = errors.New("Specified containerization type is not supported")
 		errorDelayedTask(ctx, delayedTask, err)
-		deleteProject(ctx, project)
+		deleteProject(ctx, project.Id, project.Dir, project.Containerization)
 		return
 	}
 
@@ -146,24 +173,34 @@ func postCreateProject(user *m.User, delayedTask *m.DelayedTask, projectName str
 		cmd.Dir = projectPath
 		if err = cmd.Run(); err != nil {
 			errorDelayedTask(ctx, delayedTask, err)
-			deleteProject(ctx, project)
+			deleteProject(ctx, project.Id, project.Dir, project.Containerization)
 			return
 		}
 	}
 
-	if err = q.CreateProject(ctx, project); err != nil {
+	projectOldDir := q.GetProjectShallow(ctx, project.Id).Dir
+	if project.Id == 0 {
+		project, err = q.CreateProject(ctx, project, gotoConfig)
+	} else {
+		project, err = q.UpdateProject(ctx, project, gotoConfig)
+	}
+	if err != nil {
 		errorDelayedTask(ctx, delayedTask, err)
-		deleteProject(ctx, project)
+		deleteProject(ctx, project.Id, project.Dir, project.Containerization)
 		return
 	}
 
-	okDelayedTask(ctx, delayedTask, project.Id, "Created") // TODO return good Id
+	if project.Dir != projectOldDir {
+		deleteProject(ctx, 0, projectOldDir, project.Containerization)
+	}
+
+	okDelayedTask(ctx, delayedTask, project.Id, "Created")
 }
 
-func postCreateProjectZip(
-	user *m.User,
-	delayedTask *m.DelayedTask,
+func postSaveProjectZip(
+	projectId int,
 	projectName string,
+	delayedTask *m.DelayedTask,
 	archivePath string,
 ) {
 	ctx := context.Background()
@@ -174,7 +211,7 @@ func postCreateProjectZip(
 	}
 	os.Remove(archivePath)
 
-	postCreateProject(user, delayedTask, projectName)
+	postSaveProject(projectId, projectName, delayedTask)
 }
 
 func errorDelayedTask(ctx context.Context, delayedTask *m.DelayedTask, err error) {
@@ -195,10 +232,6 @@ func okDelayedTask(
 	q.SaveDelayedTask(ctx, delayedTask)
 }
 
-func UpdateProject(fctx *fiber.Ctx) error {
-	return errors.New("TODO")
-}
-
 func DeleteProject(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 
@@ -213,23 +246,23 @@ func DeleteProject(fctx *fiber.Ctx) error {
 		return fctx.Status(404).SendString("Project not found")
 	}
 
-	deleteProject(ctx, project)
+	deleteProject(ctx, project.Id, project.Dir, project.Containerization)
 
 	return fctx.SendStatus(fiber.StatusOK)
 }
 
-func deleteProject(ctx context.Context, project *m.Project) {
-	if project.Id != 0 {
-		q.DeleteProject(ctx, project.Id)
+func deleteProject(ctx context.Context, id int, dir string, containerization string) {
+	if id != 0 {
+		q.DeleteProject(ctx, id)
 	}
-	cleanupContainers(project)
-	os.RemoveAll(filepath.Join(config.MediaPath, project.Dir))
+	cleanupContainers(dir, containerization)
+	os.RemoveAll(filepath.Join(config.MediaPath, dir))
 }
 
-func cleanupContainers(project *m.Project) {
-	switch project.Containerization {
+func cleanupContainers(dir string, containerization string) {
+	switch containerization {
 	case "docker":
-		exec.Command("docker", "image", "remove", "-f", project.Dir).Run()
+		exec.Command("docker", "image", "remove", "-f", dir).Run()
 		exec.Command("docker", "system", "prune", "-f").Run()
 	case "docker-compose":
 		removeCmd := exec.Command(
@@ -241,7 +274,7 @@ func cleanupContainers(project *m.Project) {
 			"-v",
 			"--remove-orphans",
 		)
-		removeCmd.Dir = filepath.Join(config.MediaPath, project.Dir)
+		removeCmd.Dir = filepath.Join(config.MediaPath, dir)
 		removeCmd.Run()
 		exec.Command("docker", "system", "prune", "-f").Run()
 	}

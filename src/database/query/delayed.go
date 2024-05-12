@@ -28,8 +28,8 @@ func readDelayedTaskRow(row Scanable) *m.DelayedTask {
 	return &delayedTask
 }
 
-func readDelayedTaskRows(rows pgx.Rows) []m.DelayedTask {
-	delayedTasks := []m.DelayedTask{}
+func readDelayedTaskRows(rows pgx.Rows) m.DelayedTasks {
+	delayedTasks := m.DelayedTasks{}
 	for rows.Next() {
 		delayedTask := readDelayedTaskRow(rows)
 		delayedTasks = append(delayedTasks, *delayedTask)
@@ -51,7 +51,7 @@ func GetUserDelayedTask(ctx context.Context, id int, userId int) *m.DelayedTask 
 	return readDelayedTaskRow(row)
 }
 
-func GetUserDelayedTasks(ctx context.Context, userId int, pager *service.Pager) []m.DelayedTask {
+func GetUserDelayedTasks(ctx context.Context, userId int, pager *service.Pager) m.DelayedTasks {
 	rows, _ := db.ConnPool.Query(
 		ctx,
 		"SELECT * FROM delayed_task WHERE user_id = $1"+pager.QuerySuffix,
