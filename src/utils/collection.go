@@ -1,5 +1,14 @@
 package utils
 
+func Insert(data []any, index int, value any) []any {
+	if len(data) == index {
+		return append(data, value)
+	}
+	data = append(data[:index+1], data[index:]...)
+	data[index] = value
+	return data
+}
+
 func UniqueOnly[T comparable](data *[]T) bool {
 	uniqueValues := map[T]struct{}{}
 	for _, x := range *data {

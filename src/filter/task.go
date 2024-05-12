@@ -10,33 +10,33 @@ import (
 
 type TaskFilter struct {
 	FilterBase
-	UserId   int
-	My       bool
-	Name     string
-	Language string
-	Module   string
+	userId   int
+	my       bool
+	name     string
+	language string
+	module   string
 }
 
 func NewTaskFilter(fctx *fiber.Ctx) *TaskFilter {
 	user := service.GetCurrentUser(fctx)
 
 	tf := TaskFilter{
-		UserId:   user.Id,
-		My:       u.Default(sc.ParseBool(fctx.Query("my"))),
-		Name:     fctx.Query("name"),
-		Language: fctx.Query("language"),
-		Module:   fctx.Query("module"),
+		userId:   user.Id,
+		my:       u.Default(sc.ParseBool(fctx.Query("my"))),
+		name:     fctx.Query("name"),
+		language: fctx.Query("language"),
+		module:   fctx.Query("module"),
 	}
 
 	filterEntries := []FilterEntry{
-		{tf.Name != "", tf.Name, "LOWER(task.name) LIKE LOWER('%%' || $%d || '%%')"},
-		{tf.Language != "", tf.Language, "LOWER(project.language) LIKE LOWER('%%' || $%d || '%%')"},
+		{tf.my, tf.userId, "project.user_id = $%d"},
+		{tf.name != "", tf.name, "LOWER(task.name) LIKE LOWER('%%' || $%d || '%%')"},
+		{tf.language != "", tf.language, "LOWER(project.language) LIKE LOWER('%%' || $%d || '%%')"},
 		{
-			tf.Module != "",
-			tf.Module,
+			tf.module != "",
+			tf.module,
 			"project.id IN (SELECT project_id FROM module WHERE LOWER(name) LIKE LOWER('%%' || $%d || '%%'))",
 		},
-		{tf.My, tf.UserId, "project.user_id = $%d"},
 	}
 
 	tf.FilterBase = *NewFilter(&tf.FilterBase, filterEntries)

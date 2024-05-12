@@ -7,22 +7,21 @@ import (
 )
 
 type Pager struct {
-	Start int
-	Take  int
+	start       int
+	take        int
+	QuerySuffix string
 }
 
 func NewPager(fctx *fiber.Ctx) *Pager {
 	start, _ := sc.Atoi(fctx.Query("start"))
 	take, _ := sc.Atoi(fctx.Query("take"))
 
-	pager := &Pager{Start: start, Take: take}
+	pager := &Pager{start: start, take: take}
 	if take == 0 {
-		pager.Take = 10
+		pager.take = 10
 	}
 
-	return pager
-}
+	pager.QuerySuffix = " LIMIT " + sc.Itoa(pager.take) + " OFFSET " + sc.Itoa(pager.start)
 
-func (p *Pager) QuerySuffix() string {
-	return " LIMIT " + sc.Itoa(p.Take) + " OFFSET " + sc.Itoa(p.Start)
+	return pager
 }

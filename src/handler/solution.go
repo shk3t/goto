@@ -4,6 +4,7 @@ import (
 	"context"
 	"goto/src/config"
 	q "goto/src/database/query"
+	f "goto/src/filter"
 	m "goto/src/model"
 	"goto/src/service"
 	u "goto/src/utils"
@@ -23,7 +24,8 @@ func GetSolutions(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 	user := service.GetCurrentUser(fctx)
 	pager := service.NewPager(fctx)
-	solutions := q.GetUserSolutions(ctx, user.Id, pager)
+	filter := f.NewSolutionFilter(fctx)
+	solutions := q.GetSolutions(ctx, user.Id, pager, filter)
 	return fctx.JSON(solutions.Min())
 }
 
@@ -58,29 +60,51 @@ func SubmitSolution(fctx *fiber.Ctx) error {
 		return fctx.Status(fiber.StatusBadRequest).SendString("Task not found")
 	}
 
-	taskFileNames := make([]string, len(task.Files))
-	for i, tf := range task.Files {
-		taskFileNames[i] = tf.Name
-	}
-	solutionFileNames := make([]string, len(solutionBody.Files))
-	for i, sf := range solutionBody.Files {
-		solutionFileNames[i] = sf.Name
-	}
-	missingFileNames := u.Difference(taskFileNames, solutionFileNames)
-	if len(missingFileNames) > 0 {
-		return fctx.Status(fiber.StatusBadRequest).
-			JSON(fiber.Map{"error": "Missing files", "details": missingFileNames})
+	validSolutionFiles, fiberErr := validateFileNames(fctx, solutionBody.Files, task.Files)
+	if fiberErr != nil {
+		return fiberErr
 	}
 
 	solution := &m.Solution{
 		UserId: user.Id,
-		TaskId: solutionBody.TaskId,
-		Files:  solutionBody.Files,
+		Files:  validSolutionFiles,
+        Task: *task.Min(),
 	}
-	solution = q.SaveSolution(ctx, solution)
+	q.SaveSolution(ctx, solution)
+	solution = q.GetUserSolution(ctx, solution.Id, solution.UserId)
+
 	go checkSolution(solution, task)
 
 	return fctx.JSON(solution)
+}
+
+func validateFileNames(
+	fctx *fiber.Ctx,
+	solutionFiles m.SolutionFiles,
+	taskFiles m.TaskFiles,
+) (m.SolutionFiles, error) {
+	taskFileNames := make([]string, len(taskFiles))
+	for i, tf := range taskFiles {
+		taskFileNames[i] = tf.Name
+	}
+	solutionFilesByNames := map[string]m.SolutionFile{}
+	for _, sf := range solutionFiles {
+		solutionFilesByNames[sf.Name] = sf
+	}
+	solutionFileNames := u.MapKeys(solutionFilesByNames)
+
+	missingFileNames := u.Difference(taskFileNames, solutionFileNames)
+	if len(missingFileNames) > 0 {
+		return nil, fctx.Status(fiber.StatusBadRequest).
+			JSON(fiber.Map{"error": "Missing files", "details": missingFileNames})
+	}
+
+	redundantFileNames := u.Difference(solutionFileNames, taskFileNames)
+	for _, redName := range redundantFileNames {
+		delete(solutionFilesByNames, redName)
+	}
+
+	return u.MapValues(solutionFilesByNames), nil
 }
 
 func checkSolution(solution *m.Solution, task *m.Task) {

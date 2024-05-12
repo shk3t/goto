@@ -54,7 +54,7 @@ func GetUserDelayedTask(ctx context.Context, id int, userId int) *m.DelayedTask 
 func GetUserDelayedTasks(ctx context.Context, userId int, pager *service.Pager) []m.DelayedTask {
 	rows, _ := db.ConnPool.Query(
 		ctx,
-		"SELECT * FROM delayed_task WHERE user_id = $1"+pager.QuerySuffix(),
+		"SELECT * FROM delayed_task WHERE user_id = $1"+pager.QuerySuffix,
 		userId,
 	)
 	return readDelayedTaskRows(rows)
@@ -90,7 +90,7 @@ func cleanupDelayedTasks(ctx context.Context, userId int) {
 	)
 }
 
-func SaveDelayedTask(ctx context.Context, dt *m.DelayedTask) *m.DelayedTask {
+func SaveDelayedTask(ctx context.Context, dt *m.DelayedTask) {
 	cleanupDelayedTasks(ctx, dt.UserId)
 	dt.UpdatedAt = time.Now()
 
@@ -100,6 +100,4 @@ func SaveDelayedTask(ctx context.Context, dt *m.DelayedTask) *m.DelayedTask {
 	} else {
 		updateDelayedTask(ctx, dt)
 	}
-
-	return dt
 }

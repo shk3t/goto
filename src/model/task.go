@@ -10,12 +10,12 @@ type TaskBase struct {
 
 type Task struct {
 	TaskBase
-	RunTarget string     `json:"runtarget"`
-	Files     []TaskFile `json:"files"`
+	RunTarget string    `json:"runtarget"`
+	Files     TaskFiles `json:"files"`
 }
 type TaskPrivate struct {
 	TaskBase
-	Files []TaskFilePrivate `json:"files"`
+	Files TaskFilesPrivate `json:"files"`
 }
 type TaskMin struct {
 	TaskBase
@@ -23,25 +23,15 @@ type TaskMin struct {
 }
 
 func (t *Task) Private() *TaskPrivate {
-	taskFiles := make([]TaskFilePrivate, len(t.Files))
-	for i, tf := range t.Files {
-		taskFiles[i] = *tf.Private()
-	}
-
 	return &TaskPrivate{
 		TaskBase: t.TaskBase,
-		Files:    taskFiles,
+		Files:    t.Files.Private(),
 	}
 }
 func (t *Task) Min() *TaskMin {
-	fileNames := make([]string, len(t.Files))
-	for i, tf := range t.Files {
-		fileNames[i] = tf.Name
-	}
-
 	return &TaskMin{
 		TaskBase:  t.TaskBase,
-		FileNames: fileNames,
+		FileNames: t.Files.Names(),
 	}
 }
 
@@ -56,23 +46,38 @@ func (tasks Tasks) Min() TasksMin {
 	return tasksMin
 }
 
-type TaskFile struct {
+type TaskFileBase struct {
 	Id     int    `json:"id"`
 	TaskId int    `json:"taskId"`
 	Name   string `json:"name"`
-	Path   string `json:"path"`
 	Stub   string `json:"stub"`
 }
+type TaskFile struct {
+	TaskFileBase
+	Path string `json:"path"`
+}
 type TaskFilePrivate struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
-	Stub string `json:"stub"`
+	TaskFileBase
 }
 
 func (tf *TaskFile) Private() *TaskFilePrivate {
-	return &TaskFilePrivate{
-		Id:   tf.Id,
-		Name: tf.Name,
-		Stub: tf.Stub,
+	return &TaskFilePrivate{TaskFileBase: tf.TaskFileBase}
+}
+
+type TaskFiles []TaskFile
+type TaskFilesPrivate []TaskFilePrivate
+
+func (taskFiles TaskFiles) Private() TaskFilesPrivate {
+	taskFilesPrivate := make(TaskFilesPrivate, len(taskFiles))
+	for i, tf := range taskFiles {
+		taskFilesPrivate[i] = *tf.Private()
 	}
+	return taskFilesPrivate
+}
+func (taskFiles TaskFiles) Names() []string {
+	fileNames := make([]string, len(taskFiles))
+	for i, tf := range taskFiles {
+		fileNames[i] = tf.Name
+	}
+	return fileNames
 }

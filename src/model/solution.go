@@ -3,33 +3,33 @@ package model
 import "time"
 
 type SolutionInput struct {
-	TaskId int            `json:"taskId"`
-	Files  []SolutionFile `json:"files"`
+	TaskId int           `json:"taskId"`
+	Files  SolutionFiles `json:"files"`
 }
 type Solution struct {
-	Id        int            `json:"id"`
-	UserId    int            `json:"userId"`
-	TaskId    int            `json:"taskId"`
-	Status    string         `json:"status"`
-	Result    string         `json:"result"`
-	UpdatedAt time.Time      `json:"updatedAt"`
-	Files     []SolutionFile `json:"files"`
+	Id        int           `json:"id"`
+	UserId    int           `json:"userId"`
+	Status    string        `json:"status"`
+	Result    string        `json:"result"`
+	UpdatedAt time.Time     `json:"updatedAt"`
+	Files     SolutionFiles `json:"files"`
+	Task      TaskMin       `json:"task"`
 }
 type SolutionMin struct {
 	Id        int       `json:"id"`
-	TaskId    int       `json:"taskId"`
 	UserId    int       `json:"userId"`
 	Status    string    `json:"status"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	Task      TaskMin   `json:"task"`
 }
 
 func (s *Solution) Min() *SolutionMin {
 	return &SolutionMin{
 		Id:        s.Id,
-		TaskId:    s.TaskId,
 		UserId:    s.UserId,
 		Status:    s.Status,
 		UpdatedAt: s.UpdatedAt,
+		Task:      s.Task,
 	}
 }
 
@@ -50,3 +50,5 @@ type SolutionFile struct {
 	Name       string
 	Code       string
 }
+
+type SolutionFiles []SolutionFile

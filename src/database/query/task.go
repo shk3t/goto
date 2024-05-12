@@ -49,14 +49,14 @@ func readTaskRowThenExtend(ctx context.Context, row pgx.Row) *m.Task {
 func readTaskRowsThenExtendBase(ctx context.Context, rows pgx.Rows, withStubs bool) m.Tasks {
 	tasksByIds := readTaskRows(rows)
 
-	var taskFiles []m.TaskFile
+	var allTaskFiles m.TaskFiles
 	if withStubs {
-		taskFiles = getFilesByTasksWithStubs(ctx, u.MapKeys(tasksByIds))
+		allTaskFiles = getFilesByTasksWithStubs(ctx, u.MapKeys(tasksByIds))
 	} else {
-		taskFiles = getFilesByTasks(ctx, u.MapKeys(tasksByIds))
+		allTaskFiles = getFilesByTasks(ctx, u.MapKeys(tasksByIds))
 	}
 
-	for _, tf := range taskFiles {
+	for _, tf := range allTaskFiles {
 		task := tasksByIds[tf.TaskId]
 		task.Files = append(task.Files, tf)
 		tasksByIds[tf.TaskId] = task
@@ -98,9 +98,8 @@ func GetTasks(ctx context.Context, pager *service.Pager, filter *f.TaskFilter) m
         SELECT task.*, project.language
         FROM task
         JOIN project ON project.id = task.project_id
-        WHERE`+
-			filter.SqlCondition+
-			pager.QuerySuffix(),
+        WHERE`+filter.SqlCondition+
+			pager.QuerySuffix,
 		filter.SqlArgs...,
 	)
 	return readTaskRowsThenExtend(ctx, rows)
@@ -130,8 +129,8 @@ func getTasksByProjectsWithStubs(ctx context.Context, projectIds []int) m.Tasks 
 	return readTaskRowsThenExtendWithStubs(ctx, rows)
 }
 
-func getFilesByTasks(ctx context.Context, taskIds []int) []m.TaskFile {
-	taskFiles := []m.TaskFile{}
+func getFilesByTasks(ctx context.Context, taskIds []int) m.TaskFiles {
+	taskFiles := m.TaskFiles{}
 
 	rows, _ := db.ConnPool.Query(
 		ctx, `
@@ -149,8 +148,8 @@ func getFilesByTasks(ctx context.Context, taskIds []int) []m.TaskFile {
 	return taskFiles
 }
 
-func getFilesByTasksWithStubs(ctx context.Context, taskIds []int) []m.TaskFile {
-	taskFiles := []m.TaskFile{}
+func getFilesByTasksWithStubs(ctx context.Context, taskIds []int) m.TaskFiles {
+	taskFiles := m.TaskFiles{}
 
 	rows, _ := db.ConnPool.Query(
 		ctx, `

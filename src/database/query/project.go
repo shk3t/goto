@@ -68,11 +68,6 @@ func readProjectRowsThenExtend(ctx context.Context, rows pgx.Rows) m.Projects {
 	return u.MapValues(projectsByIds)
 }
 
-func GetProject(ctx context.Context, id int) *m.Project {
-	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM project WHERE id = $1", id)
-	return readProjectRowThenExtend(ctx, row)
-}
-
 func GetProjectShallow(ctx context.Context, id int) *m.Project {
 	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM project WHERE id = $1", id)
 	return readProjectRow(row)
@@ -94,7 +89,7 @@ func GetProjects(
 ) m.Projects {
 	rows, _ := db.ConnPool.Query(
 		ctx,
-		"SELECT * FROM project WHERE"+filter.SqlCondition+pager.QuerySuffix(),
+		"SELECT * FROM project WHERE"+filter.SqlCondition+pager.QuerySuffix,
 		filter.SqlArgs...,
 	)
 	return readProjectRowsThenExtend(ctx, rows)

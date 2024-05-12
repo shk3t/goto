@@ -42,7 +42,8 @@ type GotoConfig struct {
 }
 
 func (cfg *GotoConfig) Project() *Project {
-	p := Project{ProjectBase: ProjectBase{ProjectConfigBase: cfg.ProjectConfigBase}}
+	p := Project{}
+	p.ProjectConfigBase = cfg.ProjectConfigBase
 	p.Tasks = make([]Task, len(cfg.TaskConfigs))
 	for i, tc := range cfg.TaskConfigs {
 		p.Tasks[i] = *tc.Task()
@@ -137,7 +138,7 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 				pathParts := s.Split(path, string(os.PathSeparator))
 				name := pathParts[len(pathParts)-1]
 
-				task := TaskFile{Name: name, Path: path}
+				task := TaskFile{TaskFileBase: TaskFileBase{Name: name}, Path: path}
 				cfg.TaskConfigs[i].Files[j] = task
 
 				taskFileNames[j] = name
@@ -153,7 +154,7 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 				if !ok {
 					return errors.New(taskName + " task, " + name + " file: `path` has bad format")
 				}
-				task := TaskFile{Name: name, Path: path}
+				task := TaskFile{TaskFileBase: TaskFileBase{Name: name}, Path: path}
 				cfg.TaskConfigs[i].Files = append(cfg.TaskConfigs[i].Files, task)
 			}
 		default:
