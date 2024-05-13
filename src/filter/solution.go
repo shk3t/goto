@@ -19,6 +19,7 @@ type SolutionFilter struct {
 	name     string
 	language string
 	module   string
+	outdated bool
 }
 
 func NewSolutionFilter(fctx *fiber.Ctx) *SolutionFilter {
@@ -33,6 +34,7 @@ func NewSolutionFilter(fctx *fiber.Ctx) *SolutionFilter {
 		name:     fctx.Query("name"),
 		language: fctx.Query("language"),
 		module:   fctx.Query("module"),
+		outdated: u.Default(sc.ParseBool(fctx.Query("outdated"))),
 	}
 
 	filterEntries := []FilterEntry{
@@ -42,12 +44,13 @@ func NewSolutionFilter(fctx *fiber.Ctx) *SolutionFilter {
 		{!sf.dateTo.IsZero(), sf.dateTo, "solution.updated_at <= $%d"},
 		{sf.status != "", sf.status, "LOWER(solution.status) = LOWER($%d)"},
 		{sf.name != "", sf.name, "LOWER(task.name) LIKE LOWER('%%' || $%d || '%%')"},
-		{sf.language != "", sf.language, "LOWER(project.language) LIKE LOWER('%%' || $%d || '%%')"},
+		{sf.language != "", nil, "LOWER(project.language) LIKE LOWER('%%' || $%d || '%%')"},
 		{
 			sf.module != "",
 			sf.module,
 			"project.id IN (SELECT project_id FROM module WHERE LOWER(name) LIKE LOWER('%%' || $%d || '%%'))",
 		},
+		{sf.outdated, nil, "solution.updated_at < project.updated_at"},
 	}
 
 	sf.FilterBase = *NewFilter(&sf.FilterBase, filterEntries)

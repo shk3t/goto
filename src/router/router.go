@@ -29,7 +29,7 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/solutions/:id", handler.GetSolution)
 
 	api.Post("/projects", handler.LoadProject)
-	api.Put("/projects", handler.UpdateProject)
+    api.Put("/projects/:id", handler.LoadProject)
 	api.Delete("/projects/:id", handler.DeleteProject)
 	api.Post("/solutions", handler.SubmitSolution)
 

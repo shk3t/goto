@@ -46,41 +46,34 @@ func GetProject(fctx *fiber.Ctx) error {
 }
 
 func LoadProject(fctx *fiber.Ctx) error {
-	delayedTask, err := saveProject(fctx)
-	if err != nil {
-		return err
-	}
-	return fctx.JSON(delayedTask)
+	return saveProject(fctx)
 }
 
-func UpdateProject(fctx *fiber.Ctx) error {
-	delayedTask, err := saveProject(fctx)
-	if err != nil {
-		return err
-	}
-	return fctx.JSON(delayedTask)
-}
-
-func saveProject(fctx *fiber.Ctx) (*m.DelayedTask, error) {
+func saveProject(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 	user := service.GetCurrentUser(fctx)
 
-	id, err := sc.Atoi(fctx.Params("id"))
-	if err != nil && fctx.Method() == "PUT" {
-		return nil, fctx.Status(fiber.StatusBadRequest).SendString("Id is not correct")
+	id := 0
+	action := "update"
+	if fctx.Method() == "PUT" {
+		action = "create"
+		id, err := sc.Atoi(fctx.Params("id"))
+		if err != nil {
+			return fctx.Status(fiber.StatusBadRequest).SendString("Id is not correct")
+		}
+		project := q.GetProjectShallow(ctx, id)
+		if project == nil || project.UserId != user.Id {
+			return fctx.Status(404).SendString("Project not found")
+		}
 	}
 
 	body := struct{ Url string }{}
 	if err := fctx.BodyParser(&body); err != nil {
-		return nil, fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
 	postfix := uuid.New().String()
 	var delayedTask *m.DelayedTask
-	action := "update"
-	if id == 0 {
-		action = "create"
-	}
 
 	if body.Url != "" {
 		urlParts := s.Split(body.Url, "/")
@@ -90,7 +83,7 @@ func saveProject(fctx *fiber.Ctx) (*m.DelayedTask, error) {
 		gitCloneCmd := exec.Command("git", "clone", body.Url, projectName)
 		gitCloneCmd.Dir = config.MediaPath
 		if err := gitCloneCmd.Run(); err != nil {
-			return nil, fctx.Status(fiber.StatusBadRequest).SendString("Invalid url")
+			return fctx.Status(fiber.StatusBadRequest).SendString("Invalid url")
 		}
 
 		delayedTask = &m.DelayedTask{
@@ -104,7 +97,7 @@ func saveProject(fctx *fiber.Ctx) (*m.DelayedTask, error) {
 	} else {
 		file, err := fctx.FormFile("file")
 		if err != nil {
-			return nil, fctx.Status(fiber.StatusBadRequest).SendString("Use `file` as a key for uploaded file")
+			return fctx.Status(fiber.StatusBadRequest).SendString("Use `file` as a key for uploaded file")
 		}
 
 		projectDir, extension := u.SplitExt(file.Filename)
@@ -112,7 +105,7 @@ func saveProject(fctx *fiber.Ctx) (*m.DelayedTask, error) {
 
 		archivePath := filepath.Join(config.MediaPath, projectName+extension)
 		if err = fctx.SaveFile(file, archivePath); err != nil {
-			return nil, fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
 
 		delayedTask = &m.DelayedTask{
@@ -124,7 +117,7 @@ func saveProject(fctx *fiber.Ctx) (*m.DelayedTask, error) {
 		go postSaveProjectZip(id, projectName, delayedTask, archivePath)
 	}
 
-	return delayedTask, nil
+	return fctx.JSON(delayedTask)
 }
 
 func postSaveProject(projectId int, projectName string, delayedTask *m.DelayedTask) {
@@ -178,19 +171,18 @@ func postSaveProject(projectId int, projectName string, delayedTask *m.DelayedTa
 		}
 	}
 
-	projectOldDir := q.GetProjectShallow(ctx, project.Id).Dir
-	if project.Id == 0 {
-		project, err = q.CreateProject(ctx, project, gotoConfig)
-	} else {
-		project, err = q.UpdateProject(ctx, project, gotoConfig)
+	projectOldDir := ""
+	if project.Id != 0 {
+		projectOldDir = q.GetProjectShallow(ctx, project.Id).Dir
 	}
+	err = q.SaveProject(ctx, project, gotoConfig)
 	if err != nil {
 		errorDelayedTask(ctx, delayedTask, err)
 		deleteProject(ctx, project.Id, project.Dir, project.Containerization)
 		return
 	}
 
-	if project.Dir != projectOldDir {
+	if projectOldDir != "" {
 		deleteProject(ctx, 0, projectOldDir, project.Containerization)
 	}
 
@@ -241,8 +233,8 @@ func DeleteProject(fctx *fiber.Ctx) error {
 	}
 
 	user := service.GetCurrentUser(fctx)
-	project := q.GetUserProject(ctx, id, user.Id)
-	if project == nil {
+	project := q.GetProjectShallow(ctx, id)
+	if project == nil || project.UserId != user.Id {
 		return fctx.Status(404).SendString("Project not found")
 	}
 

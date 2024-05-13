@@ -24,7 +24,8 @@ var TABLE_DEFINITIONS = [...]string{
         language VARCHAR(64) NOT NULL,
         containerization VARCHAR(64) NOT NULL DEFAULT 'docker',
         srcdir VARCHAR(64) NOT NULL DEFAULT 'src',
-        stubdir VARCHAR(64) NOT NULL DEFAULT 'stubs'
+        stubdir VARCHAR(64) NOT NULL DEFAULT 'stubs',
+        updated_at TIMESTAMP DEFAULT NOW()
     )`,
 	`
     CREATE TABLE IF NOT EXISTS module (

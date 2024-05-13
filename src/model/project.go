@@ -1,9 +1,12 @@
 package model
 
+import "time"
+
 type ProjectBase struct {
 	ProjectConfigBase
-	Id     int `json:"id"`
-	UserId int `json:"userId"`
+	Id        int       `json:"id"`
+	UserId    int       `json:"userId"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type Project struct {

@@ -1,11 +1,14 @@
 package model
 
+import "time"
+
 type TaskBase struct {
 	TaskConfigBase
-	Id        int      `json:"id"`
-	ProjectId int      `json:"projectId"`
-	Language  string   `json:"language"`
-	Modules   []string `json:"modules"`
+	Id        int       `json:"id"`
+	ProjectId int       `json:"projectId"`
+	Language  string    `json:"language"`
+	Modules   []string  `json:"modules"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type Task struct {

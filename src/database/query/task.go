@@ -20,6 +20,7 @@ func readTaskRow(row Scanable) *m.Task {
 		&task.Description,
 		&task.RunTarget,
 		&task.Language,
+		&task.UpdatedAt,
 	)
 	if err != nil {
 		return nil
@@ -83,7 +84,7 @@ func readTaskRowsThenExtendWithStubs(ctx context.Context, rows pgx.Rows) m.Tasks
 func GetTask(ctx context.Context, id int) *m.Task {
 	row := db.ConnPool.QueryRow(
 		ctx, `
-        SELECT task.*, project.language
+        SELECT task.*, project.language, project.updated_at
         FROM task
         JOIN project ON project.id = task.project_id
         WHERE task.id = $1`,
@@ -95,7 +96,7 @@ func GetTask(ctx context.Context, id int) *m.Task {
 func GetTasks(ctx context.Context, pager *service.Pager, filter *f.TaskFilter) m.Tasks {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
-        SELECT task.*, project.language
+        SELECT task.*, project.language, project.updated_at
         FROM task
         JOIN project ON project.id = task.project_id
         WHERE`+filter.SqlCondition+
@@ -108,7 +109,7 @@ func GetTasks(ctx context.Context, pager *service.Pager, filter *f.TaskFilter) m
 func getTasksByProjects(ctx context.Context, projectIds []int) m.Tasks {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
-        SELECT task.*, project.language
+        SELECT task.*, project.language, project.updated_at
         FROM task
         JOIN project ON project.id = task.project_id
         WHERE project.id = ANY ($1)`,
@@ -120,7 +121,7 @@ func getTasksByProjects(ctx context.Context, projectIds []int) m.Tasks {
 func getTasksByProjectsWithStubs(ctx context.Context, projectIds []int) m.Tasks {
 	rows, _ := db.ConnPool.Query(
 		ctx, `
-        SELECT task.*, project.language
+        SELECT task.*, project.language, project.updated_at
         FROM task
         JOIN project ON project.id = task.project_id
         WHERE project.id = ANY ($1)`,

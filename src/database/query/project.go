@@ -8,6 +8,7 @@ import (
 	m "goto/src/model"
 	"goto/src/service"
 	u "goto/src/utils"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -23,6 +24,7 @@ func readProjectRow(row Scanable) *m.Project {
 		&project.Containerization,
 		&project.SrcDir,
 		&project.StubDir,
+		&project.UpdatedAt,
 	)
 	if err != nil {
 		return nil
@@ -114,15 +116,43 @@ func getModulesByProjects(ctx context.Context, projectIds []int) m.Modules {
 	return modules
 }
 
-func CreateProject(
+func SaveProject(
 	ctx context.Context,
 	p *m.Project,
 	cfg *m.GotoConfig,
-) (*m.Project, error) {
+) error {
 	tx, _ := db.ConnPool.BeginTx(ctx, pgx.TxOptions{})
 	defer tx.Rollback(ctx)
+	var err error
 
-	err := db.ConnPool.QueryRow(
+	if p.Id == 0 {
+		err = createProjectOnly(ctx, tx, p)
+	} else {
+		err = updateProjectOnly(ctx, tx, p)
+	}
+	if err != nil {
+		return err
+	}
+
+	err = saveProjectModules(ctx, tx, p.Id, p.Modules)
+	if err != nil {
+		return err
+	}
+	err = saveProjectTasks(ctx, tx, p.Id, p.Tasks, cfg.TaskConfigs)
+	if err != nil {
+		return err
+	}
+	err = saveProjectTaskFiles(ctx, tx, p.Id, p.Tasks)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit(ctx)
+	return err
+}
+
+func createProjectOnly(ctx context.Context, tx pgx.Tx, p *m.Project) error {
+	err := tx.QueryRow(
 		ctx, `
         INSERT INTO project
             (user_id, dir, name, language, containerization, srcdir, stubdir)
@@ -130,27 +160,11 @@ func CreateProject(
         RETURNING id`,
 		p.UserId, p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir,
 	).Scan(&p.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	saveProjectModules(ctx, tx, p.Id, p.Modules)
-	saveProjectTasks(ctx, tx, p.Id, p.Tasks, cfg.TaskConfigs)
-	saveProjectTaskFiles(ctx, tx, p.Id, p.Tasks)
-
-	err = tx.Commit(ctx)
-	return p, err
+	return err
 }
 
-func UpdateProject(
-	ctx context.Context,
-	p *m.Project,
-	cfg *m.GotoConfig,
-) (*m.Project, error) {
-	tx, _ := db.ConnPool.BeginTx(ctx, pgx.TxOptions{})
-	defer tx.Rollback(ctx)
-
-	_, err := db.ConnPool.Exec(
+func updateProjectOnly(ctx context.Context, tx pgx.Tx, p *m.Project) error {
+	_, err := tx.Exec(
 		ctx, `
         UPDATE project SET
             user_id = $1,
@@ -159,21 +173,13 @@ func UpdateProject(
             language = $4,
             containerization = $6,
             srcdir = $7,
-            stubdir = $8
-        WHERE id = $9`,
-		p.UserId, p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir,
+            stubdir = $8,
+            updated_at = $9
+        WHERE id = $10`,
+		p.UserId, p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir, time.Now(),
 		p.Id,
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	saveProjectModules(ctx, tx, p.Id, p.Modules)
-	saveProjectTasks(ctx, tx, p.Id, p.Tasks, cfg.TaskConfigs)
-	saveProjectTaskFiles(ctx, tx, p.Id, p.Tasks)
-
-	err = tx.Commit(ctx)
-	return p, err
+	return err
 }
 
 func saveProjectModules(ctx context.Context, tx pgx.Tx, projectId int, modules []string) error {
@@ -221,7 +227,7 @@ func saveProjectTasks(
 	specifiedTasksByOldNames := map[string]m.Task{}
 	specifiedOldNames := []string{}
 	for _, tc := range taskConfigs {
-		if tc.OldName != "" {
+		if tc.OldName == "" {
 			specifiedTasksByOldNames[tc.Name] = specifiedTasksByNames[tc.Name]
 		} else {
 			specifiedTasksByOldNames[tc.OldName] = specifiedTasksByNames[tc.Name]

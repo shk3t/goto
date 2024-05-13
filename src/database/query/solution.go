@@ -25,6 +25,7 @@ func readSolutionRowBase(row Scanable, withResult bool) *m.Solution {
 		&solution.Task.Description,
 		nil,
 		&solution.Task.Language,
+		&solution.Task.UpdatedAt,
 	}
 	if withResult {
 		args = u.Insert(args, 3, &solution.Result)
@@ -103,7 +104,8 @@ func GetUserSolution(
             solution.result,
             solution.updated_at,
             task.*,
-            project.language
+            project.language,
+            project.updated_at
         FROM solution
         JOIN task ON task.id = solution.task_id
         JOIN project ON project.id = task.project_id
@@ -127,7 +129,8 @@ func GetSolutions(
             solution.status,
             solution.updated_at,
             task.*,
-            project.language
+            project.language,
+            project.updated_at
         FROM solution
         JOIN task ON task.id = solution.task_id
         JOIN project ON project.id = task.project_id
@@ -233,6 +236,6 @@ func SaveSolution(ctx context.Context, s *m.Solution) {
 	}
 
 	tx.Exec(ctx, "DELETE FROM solution_file WHERE solution_id = $1", s.Id)
-    saveSolutionFiles(ctx, tx, s)
+	saveSolutionFiles(ctx, tx, s)
 	tx.Commit(ctx)
 }
