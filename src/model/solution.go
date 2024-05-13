@@ -45,10 +45,10 @@ func (solutions Solutions) Min() SolutionsMin {
 }
 
 type SolutionFile struct {
-	Id         int
-	SolutionId int
-	Name       string
-	Code       string
+	Id         int    `json:"id"`
+	SolutionId int    `json:"solutionId"`
+	Name       string `json:"name"`
+	Code       string `json:"code"`
 }
 
 type SolutionFiles []SolutionFile

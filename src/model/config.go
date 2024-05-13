@@ -11,8 +11,8 @@ import (
 )
 
 type TaskConfigBase struct {
-	Name        string
-	Description string
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 type TaskConfig struct {
 	TaskConfigBase

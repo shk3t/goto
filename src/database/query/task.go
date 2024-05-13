@@ -11,6 +11,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const taskBaseSelectQuery = `
+    SELECT task.*, project.language, project.updated_at
+    FROM task
+    JOIN project ON project.id = task.project_id
+`
+
 func readTaskRow(row Scanable) *m.Task {
 	task := m.Task{}
 	err := row.Scan(
@@ -82,50 +88,29 @@ func readTaskRowsThenExtendWithStubs(ctx context.Context, rows pgx.Rows) m.Tasks
 }
 
 func GetTask(ctx context.Context, id int) *m.Task {
-	row := db.ConnPool.QueryRow(
-		ctx, `
-        SELECT task.*, project.language, project.updated_at
-        FROM task
-        JOIN project ON project.id = task.project_id
-        WHERE task.id = $1`,
-		id,
-	)
+	row := db.ConnPool.QueryRow(ctx, taskBaseSelectQuery+"WHERE task.id = $1", id)
 	return readTaskRowThenExtend(ctx, row)
 }
 
 func GetTasks(ctx context.Context, pager *service.Pager, filter *f.TaskFilter) m.Tasks {
 	rows, _ := db.ConnPool.Query(
-		ctx, `
-        SELECT task.*, project.language, project.updated_at
-        FROM task
-        JOIN project ON project.id = task.project_id
-        WHERE`+filter.SqlCondition+
-			pager.QuerySuffix,
-		filter.SqlArgs...,
+		ctx,
+		taskBaseSelectQuery+"WHERE"+filter.QueryCondition+pager.QuerySuffix,
+		filter.QueryArgs...,
 	)
 	return readTaskRowsThenExtend(ctx, rows)
 }
 
 func getTasksByProjects(ctx context.Context, projectIds []int) m.Tasks {
 	rows, _ := db.ConnPool.Query(
-		ctx, `
-        SELECT task.*, project.language, project.updated_at
-        FROM task
-        JOIN project ON project.id = task.project_id
-        WHERE project.id = ANY ($1)`,
-		projectIds,
+		ctx, taskBaseSelectQuery+"WHERE project.id = ANY ($1)", projectIds,
 	)
 	return readTaskRowsThenExtend(ctx, rows)
 }
 
 func getTasksByProjectsWithStubs(ctx context.Context, projectIds []int) m.Tasks {
 	rows, _ := db.ConnPool.Query(
-		ctx, `
-        SELECT task.*, project.language, project.updated_at
-        FROM task
-        JOIN project ON project.id = task.project_id
-        WHERE project.id = ANY ($1)`,
-		projectIds,
+		ctx, taskBaseSelectQuery+"WHERE project.id = ANY ($1)", projectIds,
 	)
 	return readTaskRowsThenExtendWithStubs(ctx, rows)
 }

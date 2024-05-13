@@ -13,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const projectBaseSelectQuery = "SELECT * FROM project "
+
 func readProjectRow(row Scanable) *m.Project {
 	project := m.Project{}
 	err := row.Scan(
@@ -72,14 +74,14 @@ func readProjectRowsThenExtend(ctx context.Context, rows pgx.Rows) m.Projects {
 }
 
 func GetProjectShallow(ctx context.Context, id int) *m.Project {
-	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM project WHERE id = $1", id)
+	row := db.ConnPool.QueryRow(ctx, projectBaseSelectQuery+"WHERE id = $1", id)
 	return readProjectRow(row)
 }
 
 func GetUserProject(ctx context.Context, id int, userId int) *m.Project {
 	row := db.ConnPool.QueryRow(
 		ctx,
-		"SELECT * FROM project WHERE id = $1 and user_id = $2",
+		projectBaseSelectQuery+"WHERE id = $1 and user_id = $2",
 		id, userId,
 	)
 	return readProjectRowThenExtend(ctx, row)
@@ -92,8 +94,8 @@ func GetProjects(
 ) m.Projects {
 	rows, _ := db.ConnPool.Query(
 		ctx,
-		"SELECT * FROM project WHERE"+filter.SqlCondition+pager.QuerySuffix,
-		filter.SqlArgs...,
+		projectBaseSelectQuery+"WHERE"+filter.QueryCondition+pager.QuerySuffix,
+		filter.QueryArgs...,
 	)
 	return readProjectRowsThenExtend(ctx, rows)
 }
@@ -171,11 +173,11 @@ func updateProjectOnly(ctx context.Context, tx pgx.Tx, p *m.Project) error {
             dir = $2,
             name = $3,
             language = $4,
-            containerization = $6,
-            srcdir = $7,
-            stubdir = $8,
-            updated_at = $9
-        WHERE id = $10`,
+            containerization = $5,
+            srcdir = $6,
+            stubdir = $7,
+            updated_at = $8
+        WHERE id = $9`,
 		p.UserId, p.Dir, p.Name, p.Language, p.Containerization, p.SrcDir, p.StubDir, time.Now(),
 		p.Id,
 	)
@@ -239,7 +241,7 @@ func saveProjectTasks(
 	invalidOldNames := u.Difference(specifiedOldNames, existingTaskNames)
 	if len(invalidOldNames) > 0 {
 		invalidTaskName := specifiedTasksByOldNames[invalidOldNames[0]].Name
-		return errors.New("Task" + invalidTaskName + ": `oldname` not found")
+		return errors.New(invalidTaskName + " task: `oldname` not found")
 	}
 
 	deprecatedTaskNames := u.Difference(existingTaskNames, taskOldNames)
@@ -272,10 +274,10 @@ func saveProjectTasks(
                 runtarget = data.runtarget
             FROM (
                 SELECT
-                    UNNEST($1) AS id,
-                    UNNEST($2) AS name,
-                    UNNEST($3) AS description,
-                    UNNEST($4) AS runtarget,
+                    UNNEST($1::INTEGER[]) AS id,
+                    UNNEST($2::VARCHAR(64)[]) AS name,
+                    UNNEST($3::TEXT[]) AS description,
+                    UNNEST($4::VARCHAR(256)[]) AS runtarget
             ) AS data
             WHERE task.id = data.id`,
 			ids, names, descriptions, runtargets,

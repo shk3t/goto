@@ -50,14 +50,15 @@ func LoadProject(fctx *fiber.Ctx) error {
 }
 
 func saveProject(fctx *fiber.Ctx) error {
+    var err error
 	ctx := context.Background()
 	user := service.GetCurrentUser(fctx)
 
 	id := 0
-	action := "update"
+	action := "create"
 	if fctx.Method() == "PUT" {
-		action = "create"
-		id, err := sc.Atoi(fctx.Params("id"))
+		action = "update"
+		id, err = sc.Atoi(fctx.Params("id"))
 		if err != nil {
 			return fctx.Status(fiber.StatusBadRequest).SendString("Id is not correct")
 		}
@@ -158,7 +159,7 @@ func postSaveProject(projectId int, projectName string, delayedTask *m.DelayedTa
 	default:
 		err = errors.New("Specified containerization type is not supported")
 		errorDelayedTask(ctx, delayedTask, err)
-		deleteProject(ctx, project.Id, project.Dir, project.Containerization)
+		deleteProject(ctx, 0, project.Dir, project.Containerization)
 		return
 	}
 
@@ -166,7 +167,7 @@ func postSaveProject(projectId int, projectName string, delayedTask *m.DelayedTa
 		cmd.Dir = projectPath
 		if err = cmd.Run(); err != nil {
 			errorDelayedTask(ctx, delayedTask, err)
-			deleteProject(ctx, project.Id, project.Dir, project.Containerization)
+			deleteProject(ctx, 0, project.Dir, project.Containerization)
 			return
 		}
 	}
@@ -178,15 +179,17 @@ func postSaveProject(projectId int, projectName string, delayedTask *m.DelayedTa
 	err = q.SaveProject(ctx, project, gotoConfig)
 	if err != nil {
 		errorDelayedTask(ctx, delayedTask, err)
-		deleteProject(ctx, project.Id, project.Dir, project.Containerization)
+		deleteProject(ctx, 0, project.Dir, project.Containerization)
 		return
 	}
 
+    okMessage := "Created"
 	if projectOldDir != "" {
 		deleteProject(ctx, 0, projectOldDir, project.Containerization)
+        okMessage = "Updated"
 	}
 
-	okDelayedTask(ctx, delayedTask, project.Id, "Created")
+	okDelayedTask(ctx, delayedTask, project.Id, okMessage)
 }
 
 func postSaveProjectZip(

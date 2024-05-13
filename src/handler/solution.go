@@ -60,15 +60,15 @@ func SubmitSolution(fctx *fiber.Ctx) error {
 		return fctx.Status(fiber.StatusBadRequest).SendString("Task not found")
 	}
 
-	validSolutionFiles, fiberErr := validateFileNames(fctx, solutionBody.Files, task.Files)
-	if fiberErr != nil {
-		return fiberErr
+	validSolutionFiles := validateFileNames(fctx, solutionBody.Files, task.Files)
+	if validSolutionFiles == nil {
+		return nil
 	}
 
 	solution := &m.Solution{
 		UserId: user.Id,
 		Files:  validSolutionFiles,
-        Task: *task.Min(),
+		Task:   *task.Min(),
 	}
 	q.SaveSolution(ctx, solution)
 	solution = q.GetUserSolution(ctx, solution.Id, solution.UserId)
@@ -82,7 +82,7 @@ func validateFileNames(
 	fctx *fiber.Ctx,
 	solutionFiles m.SolutionFiles,
 	taskFiles m.TaskFiles,
-) (m.SolutionFiles, error) {
+) (m.SolutionFiles) {
 	taskFileNames := make([]string, len(taskFiles))
 	for i, tf := range taskFiles {
 		taskFileNames[i] = tf.Name
@@ -95,8 +95,9 @@ func validateFileNames(
 
 	missingFileNames := u.Difference(taskFileNames, solutionFileNames)
 	if len(missingFileNames) > 0 {
-		return nil, fctx.Status(fiber.StatusBadRequest).
+		fctx.Status(fiber.StatusBadRequest).
 			JSON(fiber.Map{"error": "Missing files", "details": missingFileNames})
+		return nil
 	}
 
 	redundantFileNames := u.Difference(solutionFileNames, taskFileNames)
@@ -104,7 +105,7 @@ func validateFileNames(
 		delete(solutionFilesByNames, redName)
 	}
 
-	return u.MapValues(solutionFilesByNames), nil
+	return u.MapValues(solutionFilesByNames)
 }
 
 func checkSolution(solution *m.Solution, task *m.Task) {

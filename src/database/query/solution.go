@@ -12,6 +12,35 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const solutionQueryColumns = `
+    SELECT
+        solution.id,
+        solution.user_id,
+        solution.status,
+        solution.updated_at,
+        task.*,
+        project.language,
+        project.updated_at
+`
+const solutionQueryColumnsWithResult = `
+    SELECT
+        solution.id,
+        solution.user_id,
+        solution.status,
+        solution.result,
+        solution.updated_at,
+        task.*,
+        project.language,
+        project.updated_at
+`
+const solutionQueryTables = `
+    FROM solution
+    JOIN task ON task.id = solution.task_id
+    JOIN project ON project.id = task.project_id
+`
+const solutionSelectQuery = solutionQueryColumns + solutionQueryTables
+const solutionSelectQueryWithResult = solutionQueryColumnsWithResult + solutionQueryTables
+
 func readSolutionRowBase(row Scanable, withResult bool) *m.Solution {
 	solution := m.Solution{}
 	args := []any{
@@ -96,20 +125,8 @@ func GetUserSolution(
 	userId int,
 ) *m.Solution {
 	row := db.ConnPool.QueryRow(
-		ctx, `
-        SELECT
-            solution.id,
-            solution.user_id,
-            solution.status,
-            solution.result,
-            solution.updated_at,
-            task.*,
-            project.language,
-            project.updated_at
-        FROM solution
-        JOIN task ON task.id = solution.task_id
-        JOIN project ON project.id = task.project_id
-        WHERE solution.id = $1 AND solution.user_id = $2`,
+		ctx,
+		solutionSelectQueryWithResult+"WHERE solution.id = $1 AND solution.user_id = $2",
 		id, userId,
 	)
 	return readSolutionRowThenExtend(ctx, row)
@@ -122,20 +139,9 @@ func GetSolutions(
 	filter *f.SolutionFilter,
 ) m.Solutions {
 	rows, _ := db.ConnPool.Query(
-		ctx, `
-		SELECT
-            solution.id,
-            solution.user_id,
-            solution.status,
-            solution.updated_at,
-            task.*,
-            project.language,
-            project.updated_at
-        FROM solution
-        JOIN task ON task.id = solution.task_id
-        JOIN project ON project.id = task.project_id
-        WHERE`+filter.SqlCondition+pager.QuerySuffix,
-		filter.SqlArgs...,
+		ctx,
+		solutionSelectQuery+"WHERE"+filter.QueryCondition+pager.QuerySuffix,
+		filter.QueryArgs...,
 	)
 	return readSolutionRowsThenExtend(ctx, rows)
 }

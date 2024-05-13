@@ -12,8 +12,8 @@ type FilterEntry struct {
 }
 
 type FilterBase struct {
-	SqlCondition string
-	SqlArgs      []any
+	QueryCondition string
+	QueryArgs      []any
 }
 
 func NewFilter(f *FilterBase, filterEntries []FilterEntry) *FilterBase {
@@ -23,7 +23,7 @@ func NewFilter(f *FilterBase, filterEntries []FilterEntry) *FilterBase {
 	for _, fe := range filterEntries {
 		if fe.IsActive && fe.Value != nil {
 			conditions = append(conditions, fmt.Sprintf(fe.QueryPart, i))
-			f.SqlArgs = append(f.SqlArgs, fe.Value)
+			f.QueryArgs = append(f.QueryArgs, fe.Value)
 			i++
 		} else if fe.IsActive && fe.Value == nil {
 			conditions = append(conditions, fe.QueryPart)
@@ -31,9 +31,9 @@ func NewFilter(f *FilterBase, filterEntries []FilterEntry) *FilterBase {
 	}
 
 	if len(conditions) > 0 {
-		f.SqlCondition = " " + s.Join(conditions, " AND\n")
+		f.QueryCondition = " " + s.Join(conditions, " AND\n") + " "
 	} else {
-		f.SqlCondition = " TRUE"
+		f.QueryCondition = " TRUE "
 	}
 
 	return f

@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const delayedTaskBaseSelectQuery = "SELECT * FROM delayed_task "
+
 func readDelayedTaskRow(row Scanable) *m.DelayedTask {
 	delayedTask := m.DelayedTask{}
 	err := row.Scan(
@@ -38,14 +40,14 @@ func readDelayedTaskRows(rows pgx.Rows) m.DelayedTasks {
 }
 
 func GetDelayedTask(ctx context.Context, id int) *m.DelayedTask {
-	row := db.ConnPool.QueryRow(ctx, "SELECT * FROM delayed_task WHERE id = $1", id)
+	row := db.ConnPool.QueryRow(ctx, delayedTaskBaseSelectQuery+"WHERE id = $1", id)
 	return readDelayedTaskRow(row)
 }
 
 func GetUserDelayedTask(ctx context.Context, id int, userId int) *m.DelayedTask {
 	row := db.ConnPool.QueryRow(
 		ctx,
-		"SELECT * FROM delayed_task WHERE id = $1 AND user_id = $2",
+		delayedTaskBaseSelectQuery+"WHERE id = $1 AND user_id = $2",
 		id, userId,
 	)
 	return readDelayedTaskRow(row)
@@ -54,7 +56,7 @@ func GetUserDelayedTask(ctx context.Context, id int, userId int) *m.DelayedTask 
 func GetUserDelayedTasks(ctx context.Context, userId int, pager *service.Pager) m.DelayedTasks {
 	rows, _ := db.ConnPool.Query(
 		ctx,
-		"SELECT * FROM delayed_task WHERE user_id = $1"+pager.QuerySuffix,
+		delayedTaskBaseSelectQuery+"WHERE user_id = $1"+pager.QuerySuffix,
 		userId,
 	)
 	return readDelayedTaskRows(rows)
