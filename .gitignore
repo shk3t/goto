@@ -2,6 +2,7 @@
 .vscode/
 .idea/
 pyrightconfig.json
+diploma/
 
 # Private data
 .env
