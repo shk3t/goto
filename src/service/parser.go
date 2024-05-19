@@ -2,21 +2,28 @@ package service
 
 import (
 	b "bytes"
-    s "strings"
 	"goto/src/config"
 	"os/exec"
 	"regexp"
+	s "strings"
 )
 
-func ParseStatus(data string) string {
-    data = s.ToLower(data)
-    status := "done"
-    for _, fk := range config.FailKeywords {
-        if s.Contains(data, fk) {
-            status = "fail"
-        }
-    }
-    return status
+func ParseStatus(data string, failKeywords []string) string {
+	data = s.ToLower(data)
+	if len(failKeywords) == 0 {
+		failKeywords = config.FailKeywords
+	}
+
+	if len(data) == 0 {
+		return "fail"
+	}
+	for _, fk := range failKeywords {
+		if s.Contains(data, fk) {
+			return "fail"
+		}
+	}
+
+	return "done"
 }
 
 func ParseComposeOutput(data []byte, dir string) string {

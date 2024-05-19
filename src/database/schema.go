@@ -33,6 +33,12 @@ var TABLE_DEFINITIONS = [...]string{
         project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
         name VARCHAR(64) NOT NULL
     )`,
+	`
+    CREATE TABLE IF NOT EXISTS fail_keyword (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+        name VARCHAR(64) NOT NULL
+    )`,
 
 	`
     CREATE TABLE IF NOT EXISTS task (

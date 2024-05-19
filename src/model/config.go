@@ -38,6 +38,7 @@ type ProjectConfigBase struct {
 	Containerization string
 	SrcDir           string
 	StubDir          string
+	FailKeywords     []string
 }
 type GotoConfig struct {
 	ProjectConfigBase
@@ -93,12 +94,20 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 	if err != nil {
 		return err
 	}
-
 	cfg.Modules = make([]string, len(modules))
 	for i, m := range modules {
 		cfg.Modules[i], ok = m.(string)
 		if !ok {
 			return errors.New("`modules` has bad format")
+		}
+	}
+
+	failKeywords := u.GetAssertDefault(d, "failkeywords", []any{})
+	cfg.FailKeywords = make([]string, len(failKeywords))
+	for i, fk := range failKeywords {
+		cfg.FailKeywords[i], ok = fk.(string)
+		if !ok {
+			return errors.New("`failkeywords` has bad format")
 		}
 	}
 
@@ -148,6 +157,9 @@ func (cfg *GotoConfig) UnmarshalTOML(data any) (fatalError error) {
 				taskFileNames[j] = name
 			}
 
+            if len(taskFiles) == 0 {
+				return errors.New(taskName + " task: has no files")
+            }
 			if !u.UniqueOnly(&taskFileNames) {
 				return errors.New(taskName + " task: conflicting file names; you should specify them via hashtable.")
 			}

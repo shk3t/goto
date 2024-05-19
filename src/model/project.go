@@ -68,3 +68,19 @@ func (modules Modules) Names() []string {
 	}
 	return names
 }
+
+type FailKeyword struct {
+	Id        int
+	ProjectId int
+	Name      string
+}
+
+type FailKeywords []FailKeyword
+
+func (failKeywords FailKeywords) Names() []string {
+	names := make([]string, len(failKeywords))
+	for i, m := range failKeywords {
+		names[i] = m.Name
+	}
+	return names
+}

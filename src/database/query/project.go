@@ -50,6 +50,7 @@ func readProjectRowThenExtend(ctx context.Context, row pgx.Row) *m.Project {
 	}
 	project.Tasks = getTasksByProjectsWithStubs(ctx, []int{project.Id})
 	project.Modules = getModulesByProjects(ctx, []int{project.Id}).Names()
+	project.FailKeywords = GetFailKeywords(ctx, project.Id)
 	return project
 }
 
@@ -68,6 +69,13 @@ func readProjectRowsThenExtend(ctx context.Context, rows pgx.Rows) m.Projects {
 		project := projectsByIds[m.ProjectId]
 		project.Modules = append(project.Modules, m.Name)
 		projectsByIds[m.ProjectId] = project
+	}
+
+	allFailKeywords := getFailKeywordsByProjects(ctx, u.MapKeys(projectsByIds))
+	for _, fk := range allFailKeywords {
+		project := projectsByIds[fk.ProjectId]
+		project.FailKeywords = append(project.FailKeywords, fk.Name)
+		projectsByIds[fk.ProjectId] = project
 	}
 
 	return u.MapValues(projectsByIds)
@@ -100,6 +108,10 @@ func GetProjects(
 	return readProjectRowsThenExtend(ctx, rows)
 }
 
+func GetFailKeywords(ctx context.Context, projectId int) []string {
+	return getFailKeywordsByProjects(ctx, []int{projectId}).Names()
+}
+
 func getModulesByProjects(ctx context.Context, projectIds []int) m.Modules {
 	modules := m.Modules{}
 
@@ -116,6 +128,24 @@ func getModulesByProjects(ctx context.Context, projectIds []int) m.Modules {
 	}
 
 	return modules
+}
+
+func getFailKeywordsByProjects(ctx context.Context, projectIds []int) m.FailKeywords {
+	failKeywords := m.FailKeywords{}
+
+	rows, _ := db.ConnPool.Query(
+		ctx,
+		"SELECT * FROM fail_keyword WHERE project_id = ANY ($1)",
+		projectIds,
+	)
+
+	for rows.Next() {
+		fk := m.FailKeyword{}
+		rows.Scan(&fk.Id, &fk.ProjectId, &fk.Name)
+		failKeywords = append(failKeywords, fk)
+	}
+
+	return failKeywords
 }
 
 func SaveProject(
@@ -137,6 +167,10 @@ func SaveProject(
 	}
 
 	err = saveProjectModules(ctx, tx, p.Id, p.Modules)
+	if err != nil {
+		return err
+	}
+	err = saveProjectFailKeywords(ctx, tx, p.Id, p.FailKeywords)
 	if err != nil {
 		return err
 	}
@@ -188,8 +222,8 @@ func saveProjectModules(ctx context.Context, tx pgx.Tx, projectId int, modules [
 	tx.Exec(ctx, "DELETE FROM module WHERE project_id = $1", projectId)
 
 	moduleEntries := make([][]any, len(modules))
-	for i, mod := range modules {
-		moduleEntries[i] = []any{projectId, mod}
+	for i, m := range modules {
+		moduleEntries[i] = []any{projectId, m}
 	}
 
 	_, err := tx.CopyFrom(
@@ -197,6 +231,29 @@ func saveProjectModules(ctx context.Context, tx pgx.Tx, projectId int, modules [
 		pgx.Identifier{"module"},
 		[]string{"project_id", "name"},
 		pgx.CopyFromRows(moduleEntries),
+	)
+
+	return err
+}
+
+func saveProjectFailKeywords(
+	ctx context.Context,
+	tx pgx.Tx,
+	projectId int,
+	failKeywords []string,
+) error {
+	tx.Exec(ctx, "DELETE FROM fail_keyword WHERE project_id = $1", projectId)
+
+	failKeywordEntries := make([][]any, len(failKeywords))
+	for i, fk := range failKeywords {
+		failKeywordEntries[i] = []any{projectId, fk}
+	}
+
+	_, err := tx.CopyFrom(
+		ctx,
+		pgx.Identifier{"fail_keyword"},
+		[]string{"project_id", "name"},
+		pgx.CopyFromRows(failKeywordEntries),
 	)
 
 	return err

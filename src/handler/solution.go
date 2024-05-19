@@ -82,7 +82,7 @@ func validateFileNames(
 	fctx *fiber.Ctx,
 	solutionFiles m.SolutionFiles,
 	taskFiles m.TaskFiles,
-) (m.SolutionFiles) {
+) m.SolutionFiles {
 	taskFileNames := make([]string, len(taskFiles))
 	for i, tf := range taskFiles {
 		taskFileNames[i] = tf.Name
@@ -166,6 +166,7 @@ func checkSolution(solution *m.Solution, task *m.Task) {
 		exec.Command("docker", "system", "prune", "-f").Run()
 	}
 
-	solution.Status = service.ParseStatus(solution.Result)
+	failKeywords := q.GetFailKeywords(ctx, project.Id)
+	solution.Status = service.ParseStatus(solution.Result, failKeywords)
 	q.SaveSolution(ctx, solution)
 }
