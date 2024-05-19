@@ -6,4 +6,4 @@ const GotoConfigName = "goto.toml"
 
 var SecretKey string
 
-var FailKeywords = []string{"fail", "error"}
+var FailKeywords = []string{"fail", "error", "expected"}
