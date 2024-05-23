@@ -50,7 +50,7 @@ func LoadProject(fctx *fiber.Ctx) error {
 }
 
 func saveProject(fctx *fiber.Ctx) error {
-    var err error
+	var err error
 	ctx := context.Background()
 	user := service.GetCurrentUser(fctx)
 
@@ -75,25 +75,18 @@ func saveProject(fctx *fiber.Ctx) error {
 
 	postfix := uuid.New().String()
 	var delayedTask *m.DelayedTask
+	var projectDir, projectName string
 
 	if body.Url != "" {
 		urlParts := s.Split(body.Url, "/")
-		projectDir := urlParts[len(urlParts)-1]
-		projectName := projectDir + "_" + postfix
+		projectDir = urlParts[len(urlParts)-1]
+		projectName = projectDir + "_" + postfix
 
 		gitCloneCmd := exec.Command("git", "clone", body.Url, projectName)
 		gitCloneCmd.Dir = config.MediaPath
 		if err := gitCloneCmd.Run(); err != nil {
 			return fctx.Status(fiber.StatusBadRequest).SendString("Invalid url")
 		}
-
-		delayedTask = &m.DelayedTask{
-			UserId: user.Id,
-			Action: action + " project",
-			Target: projectDir,
-		}
-		q.SaveDelayedTask(ctx, delayedTask)
-		go postSaveProject(id, projectName, delayedTask)
 
 	} else {
 		file, err := fctx.FormFile("file")
@@ -102,21 +95,26 @@ func saveProject(fctx *fiber.Ctx) error {
 		}
 
 		projectDir, extension := u.SplitExt(file.Filename)
-		projectName := projectDir + "_" + postfix
+		projectName = projectDir + "_" + postfix
 
 		archivePath := filepath.Join(config.MediaPath, projectName+extension)
 		if err = fctx.SaveFile(file, archivePath); err != nil {
 			return fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
-
-		delayedTask = &m.DelayedTask{
-			UserId: user.Id,
-			Action: action + " project",
-			Target: projectDir,
+		err = service.Unzip(archivePath, true)
+		os.Remove(archivePath)
+		if err != nil {
+			return fctx.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
-		q.SaveDelayedTask(ctx, delayedTask)
-		go postSaveProjectZip(id, projectName, delayedTask, archivePath)
 	}
+
+	delayedTask = &m.DelayedTask{
+		UserId: user.Id,
+		Action: action + " project",
+		Target: projectDir,
+	}
+	q.SaveDelayedTask(ctx, delayedTask)
+	go postSaveProject(id, projectName, delayedTask)
 
 	return fctx.JSON(delayedTask)
 }
@@ -183,30 +181,13 @@ func postSaveProject(projectId int, projectName string, delayedTask *m.DelayedTa
 		return
 	}
 
-    okMessage := "Created"
+	okMessage := "Created"
 	if projectOldDir != "" {
 		deleteProject(ctx, 0, projectOldDir, project.Containerization)
-        okMessage = "Updated"
+		okMessage = "Updated"
 	}
 
 	okDelayedTask(ctx, delayedTask, project.Id, okMessage)
-}
-
-func postSaveProjectZip(
-	projectId int,
-	projectName string,
-	delayedTask *m.DelayedTask,
-	archivePath string,
-) {
-	ctx := context.Background()
-
-	if err := service.Unzip(archivePath, true); err != nil {
-		errorDelayedTask(ctx, delayedTask, err)
-		return
-	}
-	os.Remove(archivePath)
-
-	postSaveProject(projectId, projectName, delayedTask)
 }
 
 func errorDelayedTask(ctx context.Context, delayedTask *m.DelayedTask, err error) {
