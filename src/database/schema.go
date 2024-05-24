@@ -12,13 +12,12 @@ var TABLE_DEFINITIONS = [...]string{
     CREATE TABLE IF NOT EXISTS "user" (
         id SERIAL PRIMARY KEY,
         login VARCHAR(64) NOT NULL UNIQUE,
-        password VARCHAR(128) NOT NULL,
-        is_admin BOOLEAN NOT NULL DEFAULT false
+        password VARCHAR(128) NOT NULL
     )`,
 	`
     CREATE TABLE IF NOT EXISTS project (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
         dir VARCHAR(128) NOT NULL UNIQUE,
         name VARCHAR(64) NOT NULL,
         language VARCHAR(64) NOT NULL,
@@ -84,7 +83,7 @@ var TABLE_DEFINITIONS = [...]string{
         user_id INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
         target_id INTEGER,
         action VARCHAR(256) NOT NULL,
-        target VARCHAR(256) NOT NULL,
+        target_name VARCHAR(256) NOT NULL,
         status VARCHAR(64) NOT NULL DEFAULT 'processing',
         details TEXT NOT NULL DEFAULT '',
         updated_at TIMESTAMP DEFAULT NOW()

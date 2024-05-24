@@ -12,7 +12,7 @@ func GetUser(ctx context.Context, id int) (*m.User, error) {
 	user := m.User{}
 	err := db.ConnPool.QueryRow(
 		ctx, userBaseSelectQuery+"WHERE id = $1", id,
-	).Scan(&user.Id, &user.Login, &user.Password, &user.IsAdmin)
+	).Scan(&user.Id, &user.Login, &user.Password)
 	return &user, err
 }
 
@@ -20,7 +20,7 @@ func GetUserByLogin(ctx context.Context, login string) (*m.User, error) {
 	user := m.User{}
 	err := db.ConnPool.QueryRow(
 		ctx, userBaseSelectQuery+"WHERE login = $1", login,
-	).Scan(&user.Id, &user.Login, &user.Password, &user.IsAdmin)
+	).Scan(&user.Id, &user.Login, &user.Password)
 	return &user, err
 }
 

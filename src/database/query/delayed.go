@@ -19,7 +19,7 @@ func readDelayedTaskRow(row Scanable) *m.DelayedTask {
 		&delayedTask.UserId,
 		&delayedTask.TargetId,
 		&delayedTask.Action,
-		&delayedTask.Target,
+		&delayedTask.TargetName,
 		&delayedTask.Status,
 		&delayedTask.Details,
 		&delayedTask.UpdatedAt,
@@ -65,10 +65,10 @@ func GetUserDelayedTasks(ctx context.Context, userId int, pager *service.Pager) 
 func createDelayedTask(ctx context.Context, dt *m.DelayedTask) {
 	db.ConnPool.QueryRow(
 		ctx, `
-        INSERT INTO delayed_task (user_id, action, target)
+        INSERT INTO delayed_task (user_id, action, target_name)
         VALUES ($1, $2, $3)
         RETURNING id`,
-		dt.UserId, dt.Action, dt.Target,
+		dt.UserId, dt.Action, dt.TargetName,
 	).Scan(&dt.Id)
 }
 

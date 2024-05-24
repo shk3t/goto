@@ -94,7 +94,8 @@ func saveProject(fctx *fiber.Ctx) error {
 			return fctx.Status(fiber.StatusBadRequest).SendString("Use `file` as a key for uploaded file")
 		}
 
-		projectDir, extension := u.SplitExt(file.Filename)
+		var extension string
+		projectDir, extension = u.SplitExt(file.Filename)
 		projectName = projectDir + "_" + postfix
 
 		archivePath := filepath.Join(config.MediaPath, projectName+extension)
@@ -111,7 +112,7 @@ func saveProject(fctx *fiber.Ctx) error {
 	delayedTask = &m.DelayedTask{
 		UserId: user.Id,
 		Action: action + " project",
-		Target: projectDir,
+		TargetName: projectDir,
 	}
 	q.SaveDelayedTask(ctx, delayedTask)
 	go postSaveProject(id, projectName, delayedTask)
