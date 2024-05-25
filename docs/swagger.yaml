@@ -1,0 +1,658 @@
+basePath: /api/
+definitions:
+  goto_src_model.DelayedTask:
+    properties:
+      action:
+        type: string
+      details:
+        type: string
+      id:
+        type: integer
+      status:
+        type: string
+      targetId:
+        type: integer
+      targetName:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: integer
+    type: object
+  goto_src_model.ProjectMin:
+    properties:
+      containerization:
+        type: string
+      failKeywords:
+        items:
+          type: string
+        type: array
+      id:
+        type: integer
+      language:
+        type: string
+      modules:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      srcDir:
+        type: string
+      stubDir:
+        type: string
+      tasks:
+        items:
+          $ref: '#/definitions/goto_src_model.TaskMin'
+        type: array
+      updatedAt:
+        type: string
+      userId:
+        type: integer
+    type: object
+  goto_src_model.ProjectPublic:
+    properties:
+      containerization:
+        type: string
+      failKeywords:
+        items:
+          type: string
+        type: array
+      id:
+        type: integer
+      language:
+        type: string
+      modules:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      srcDir:
+        type: string
+      stubDir:
+        type: string
+      tasks:
+        items:
+          $ref: '#/definitions/goto_src_model.Task'
+        type: array
+      updatedAt:
+        type: string
+      userId:
+        type: integer
+    type: object
+  goto_src_model.Solution:
+    properties:
+      files:
+        items:
+          $ref: '#/definitions/goto_src_model.SolutionFile'
+        type: array
+      id:
+        type: integer
+      result:
+        type: string
+      status:
+        type: string
+      task:
+        $ref: '#/definitions/goto_src_model.TaskMin'
+      updatedAt:
+        type: string
+      userId:
+        type: integer
+    type: object
+  goto_src_model.SolutionFile:
+    properties:
+      code:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      solutionId:
+        type: integer
+    type: object
+  goto_src_model.SolutionInput:
+    properties:
+      files:
+        items:
+          $ref: '#/definitions/goto_src_model.SolutionFile'
+        type: array
+      taskId:
+        type: integer
+    type: object
+  goto_src_model.SolutionMin:
+    properties:
+      id:
+        type: integer
+      status:
+        type: string
+      task:
+        $ref: '#/definitions/goto_src_model.TaskMin'
+      updatedAt:
+        type: string
+      userId:
+        type: integer
+    type: object
+  goto_src_model.Task:
+    properties:
+      description:
+        type: string
+      files:
+        items:
+          $ref: '#/definitions/goto_src_model.TaskFile'
+        type: array
+      id:
+        type: integer
+      language:
+        type: string
+      modules:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      projectId:
+        type: integer
+      runtarget:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  goto_src_model.TaskFile:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      path:
+        type: string
+      stub:
+        type: string
+      taskId:
+        type: integer
+    type: object
+  goto_src_model.TaskFilePrivate:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      stub:
+        type: string
+      taskId:
+        type: integer
+    type: object
+  goto_src_model.TaskMin:
+    properties:
+      description:
+        type: string
+      fileNames:
+        items:
+          type: string
+        type: array
+      id:
+        type: integer
+      language:
+        type: string
+      modules:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      projectId:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  goto_src_model.TaskPrivate:
+    properties:
+      description:
+        type: string
+      files:
+        items:
+          $ref: '#/definitions/goto_src_model.TaskFilePrivate'
+        type: array
+      id:
+        type: integer
+      language:
+        type: string
+      modules:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      projectId:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  goto_src_model.User:
+    properties:
+      id:
+        type: integer
+      login:
+        type: string
+      password:
+        type: string
+    type: object
+host: localhost:3228
+info:
+  contact:
+    name: Goto GitHub
+    url: http://github.com/shk3t/goto
+  description: Web app for code challenges with any environments
+  title: Goto
+paths:
+  /delayed-tasks:
+    get:
+      parameters:
+      - description: Вернуть с
+        in: query
+        name: start
+        type: integer
+      - description: Количество возвращаемых элементов
+        in: query
+        name: take
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/goto_src_model.DelayedTask'
+              type: array
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Список моих отложенных заданий
+      tags:
+      - Отложенные задания
+  /delayed-tasks/{id}:
+    get:
+      parameters:
+      - description: Идентификатор отложенного задания
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/goto_src_model.DelayedTask'
+      security:
+      - BearerAuth: []
+      summary: Детализация отложенного задания
+      tags:
+      - Отложенные задания
+  /login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Авторизационные данные
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            login:
+              type: string
+            password:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/goto_src_model.User'
+      summary: Логин
+      tags:
+      - Авторизация
+  /projects:
+    get:
+      parameters:
+      - description: Вернуть с
+        in: query
+        name: start
+        type: integer
+      - description: Количество возвращаемых элементов
+        in: query
+        name: take
+        type: integer
+      - description: Название
+        in: query
+        name: name
+        type: string
+      - description: Язык
+        in: query
+        name: language
+        type: string
+      - description: Название модуля
+        in: query
+        name: module
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/goto_src_model.ProjectMin'
+              type: array
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Список моих проектов
+      tags:
+      - Проекты
+    post:
+      consumes:
+      - application/json
+      - multipart/form-data
+      parameters:
+      - description: Информация о проекте
+        in: body
+        name: body
+        schema:
+          properties:
+            url:
+              type: string
+          type: object
+      - description: Архив с проектом
+        in: formData
+        name: file
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/goto_src_model.DelayedTask'
+      security:
+      - BearerAuth: []
+      summary: Добавление проекта с задачами
+      tags:
+      - Проекты
+  /projects/{id}:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Удаление проекта с задачами
+      tags:
+      - Проекты
+    get:
+      parameters:
+      - description: Идентификатор проекта
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/goto_src_model.ProjectPublic'
+      security:
+      - BearerAuth: []
+      summary: Детализация моего проекта
+      tags:
+      - Проекты
+    put:
+      consumes:
+      - application/json
+      - multipart/form-data
+      parameters:
+      - description: Идентификатор проекта
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Информация о проекте
+        in: body
+        name: body
+        schema:
+          properties:
+            url:
+              type: string
+          type: object
+      - description: Архив с проектом
+        in: formData
+        name: file
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/goto_src_model.DelayedTask'
+      security:
+      - BearerAuth: []
+      summary: Обновление проекта с задачами
+      tags:
+      - Проекты
+  /register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Авторизационные данные
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            login:
+              type: string
+            password:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/goto_src_model.User'
+      summary: Регистрация
+      tags:
+      - Авторизация
+  /solution/{id}:
+    get:
+      parameters:
+      - description: Идентификатор решения
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/goto_src_model.Solution'
+      security:
+      - BearerAuth: []
+      summary: Детализация моего решения
+      tags:
+      - Решения
+  /solutions:
+    get:
+      parameters:
+      - description: Вернуть с
+        in: query
+        name: start
+        type: integer
+      - description: Количество возвращаемых элементов
+        in: query
+        name: take
+        type: integer
+      - description: Задача
+        in: query
+        name: taskId
+        type: integer
+      - description: Минимальная дата обновления
+        example: "2001-12-31"
+        format: date-time
+        in: query
+        name: dateFrom
+        type: string
+      - description: Максимальная дата обновления
+        example: "2001-12-31"
+        format: date-time
+        in: query
+        name: dateTo
+        type: string
+      - description: Статус
+        in: query
+        name: status
+        type: string
+      - description: Название
+        in: query
+        name: name
+        type: string
+      - description: Язык
+        in: query
+        name: language
+        type: string
+      - description: Название модуля
+        in: query
+        name: module
+        type: string
+      - description: Устаревшие
+        in: query
+        name: outdated
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/goto_src_model.SolutionMin'
+              type: array
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Список моих решений
+      tags:
+      - Решения
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Решение
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/goto_src_model.SolutionInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/goto_src_model.Solution'
+      security:
+      - BearerAuth: []
+      summary: Отправить решение на проверку
+      tags:
+      - Решения
+  /tasks:
+    get:
+      parameters:
+      - description: Вернуть с
+        in: query
+        name: start
+        type: integer
+      - description: Количество возвращаемых элементов
+        in: query
+        name: take
+        type: integer
+      - description: Созданные мной
+        in: query
+        name: my
+        type: boolean
+      - description: Название
+        in: query
+        name: name
+        type: string
+      - description: Язык
+        in: query
+        name: language
+        type: string
+      - description: Название модуля
+        in: query
+        name: module
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/goto_src_model.TaskMin'
+              type: array
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Список задач
+      tags:
+      - Задачи
+  /tasks/{id}:
+    get:
+      parameters:
+      - description: Идентификатор задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/goto_src_model.TaskPrivate'
+      security:
+      - BearerAuth: []
+      summary: Детализация задачи
+      tags:
+      - Задачи
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    description: Prepend your JWT key with `Bearer`
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

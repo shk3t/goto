@@ -33,6 +33,13 @@ func getJwtToken(user *m.User) (string, error) {
 	return encodedToken, err
 }
 
+// @tags Авторизация
+// @summary Регистрация
+// @accept json
+// @param body body object{login=string,password=string} true "Авторизационные данные"
+// @produce json
+// @success 200 {object} m.User
+// @router /register [post]
 func Register(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 	body := m.User{}
@@ -69,6 +76,13 @@ func Register(fctx *fiber.Ctx) error {
 	return fctx.JSON(fiber.Map{"user": user, "token": encodedToken})
 }
 
+// @tags Авторизация
+// @summary Логин
+// @accept json
+// @param body body object{login=string,password=string} true "Авторизационные данные"
+// @produce json
+// @success 200 {object} m.User
+// @router /login [post]
 func Login(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 	body := m.User{}

@@ -20,6 +20,22 @@ import (
 	"github.com/google/uuid"
 )
 
+// @tags Решения
+// @summary Список моих решений
+// @security BearerAuth
+// @param start query int false "Вернуть с"
+// @param take query int false "Количество возвращаемых элементов"
+// @param taskId query int false "Задача"
+// @param dateFrom query string false "Минимальная дата обновления" Format(date-time) example(2001-12-31)
+// @param dateTo query string false "Максимальная дата обновления" Format(date-time) example(2001-12-31)
+// @param status query string false "Статус"
+// @param name query string false "Название"
+// @param language query string false "Язык"
+// @param module query string false "Название модуля"
+// @param outdated query bool false "Устаревшие"
+// @produce json
+// @success 200 {array} m.SolutionsMin
+// @router /solutions [get]
 func GetSolutions(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 	user := service.GetCurrentUser(fctx)
@@ -29,6 +45,13 @@ func GetSolutions(fctx *fiber.Ctx) error {
 	return fctx.JSON(solutions.Min())
 }
 
+// @tags Решения
+// @summary Детализация моего решения
+// @security BearerAuth
+// @param id path int true "Идентификатор решения"
+// @produce json
+// @success 200 {object} m.Solution
+// @router /solution/{id} [get]
 func GetSolution(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 	user := service.GetCurrentUser(fctx)
@@ -46,6 +69,14 @@ func GetSolution(fctx *fiber.Ctx) error {
 	return fctx.JSON(solution)
 }
 
+// @tags Решения
+// @summary Отправить решение на проверку
+// @security BearerAuth
+// @accept json
+// @param body body m.SolutionInput true "Решение"
+// @produce json
+// @success 200 {object} m.Solution
+// @router /solutions [post]
 func SubmitSolution(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 	user := service.GetCurrentUser(fctx)

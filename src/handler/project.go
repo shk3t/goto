@@ -20,6 +20,17 @@ import (
 	"github.com/google/uuid"
 )
 
+// @tags Проекты
+// @summary Список моих проектов
+// @security BearerAuth
+// @param start query int false "Вернуть с"
+// @param take query int false "Количество возвращаемых элементов"
+// @param name query string false "Название"
+// @param language query string false "Язык"
+// @param module query string false "Название модуля"
+// @produce json
+// @success 200 {array} m.ProjectsMin
+// @router /projects [get]
 func GetProjects(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 	pager := service.NewPager(fctx)
@@ -28,6 +39,13 @@ func GetProjects(fctx *fiber.Ctx) error {
 	return fctx.JSON(projects.Min())
 }
 
+// @tags Проекты
+// @summary Детализация моего проекта
+// @security BearerAuth
+// @param id path int true "Идентификатор проекта"
+// @produce json
+// @success 200 {object} m.ProjectPublic
+// @router /projects/{id} [get]
 func GetProject(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 	user := service.GetCurrentUser(fctx)
@@ -45,6 +63,27 @@ func GetProject(fctx *fiber.Ctx) error {
 	return fctx.JSON(project.Public())
 }
 
+// @tags Проекты
+// @summary Добавление проекта с задачами
+// @security BearerAuth
+// @accept json,mpfd
+// @param body body object{url=string} false "Информация о проекте"
+// @param file formData file false "Архив с проектом"
+// @produce json
+// @success 200 {object} m.DelayedTask
+// @router /projects [post]
+func _() {}
+
+// @tags Проекты
+// @summary Обновление проекта с задачами
+// @security BearerAuth
+// @accept json,mpfd
+// @param id path int true "Идентификатор проекта"
+// @param body body object{url=string} false "Информация о проекте"
+// @param file formData file false "Архив с проектом"
+// @produce json
+// @success 200 {object} m.DelayedTask
+// @router /projects/{id} [put]
 func LoadProject(fctx *fiber.Ctx) error {
 	var err error
 	ctx := context.Background()
@@ -205,6 +244,12 @@ func okDelayedTask(
 	q.SaveDelayedTask(ctx, delayedTask)
 }
 
+// @tags Проекты
+// @summary Удаление проекта с задачами
+// @security BearerAuth
+// @produce json
+// @success 200 {string} string
+// @router /projects/{id} [delete]
 func DeleteProject(fctx *fiber.Ctx) error {
 	ctx := context.Background()
 

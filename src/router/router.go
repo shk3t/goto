@@ -9,6 +9,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// @title Goto
+// @description Web app for code challenges with any environments
+// @contact.name Goto GitHub
+// @contact.url http://github.com/shk3t/goto
+// @host localhost:3228
+// @basePath /api/
+// @schemes http
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Prepend your JWT key with `Bearer`
 func SetupRoutes(app *fiber.App) {
 	api := app.Group("/api")
 
@@ -29,7 +40,7 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/solutions/:id", handler.GetSolution)
 
 	api.Post("/projects", handler.LoadProject)
-    api.Put("/projects/:id", handler.LoadProject)
+	api.Put("/projects/:id", handler.LoadProject)
 	api.Delete("/projects/:id", handler.DeleteProject)
 	api.Post("/solutions", handler.SubmitSolution)
 

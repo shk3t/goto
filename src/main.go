@@ -7,6 +7,7 @@ import (
 	"goto/src/router"
 
 	"github.com/bytedance/sonic"
+	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,6 +30,11 @@ func main() {
 	})
 
 	app.Use(logger.New())
+	app.Use(swagger.New(swagger.Config{
+		BasePath: "/api/",
+		FilePath: "./docs/swagger.json",
+		Path:     "docs",
+	}))
 
 	router.SetupRoutes(app)
 
