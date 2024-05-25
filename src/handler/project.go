@@ -46,10 +46,6 @@ func GetProject(fctx *fiber.Ctx) error {
 }
 
 func LoadProject(fctx *fiber.Ctx) error {
-	return saveProject(fctx)
-}
-
-func saveProject(fctx *fiber.Ctx) error {
 	var err error
 	ctx := context.Background()
 	user := service.GetCurrentUser(fctx)
@@ -110,8 +106,8 @@ func saveProject(fctx *fiber.Ctx) error {
 	}
 
 	delayedTask = &m.DelayedTask{
-		UserId: user.Id,
-		Action: action + " project",
+		UserId:     user.Id,
+		Action:     action + " project",
 		TargetName: projectDir,
 	}
 	q.SaveDelayedTask(ctx, delayedTask)
