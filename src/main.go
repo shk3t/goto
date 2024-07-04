@@ -34,7 +34,7 @@ func main() {
 	app.Use(swagger.New(swagger.Config{
 		BasePath: "/api/",
 		FilePath: "./docs/swagger.json",
-		Path:     "docs",
+		Path:     "",
 	}))
 
 	router.SetupRoutes(app)
