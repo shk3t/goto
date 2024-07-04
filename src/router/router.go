@@ -26,7 +26,8 @@ func SetupRoutes(app *fiber.App) {
 	api.Post("/login", handler.Login)
 
 	api.Use(jwtware.New(jwtware.Config{
-		SigningKey: jwtware.SigningKey{Key: []byte(config.SecretKey)},
+		SigningKey:  jwtware.SigningKey{Key: []byte(config.SecretKey)},
+		TokenLookup: "header:Authorization,cookie:Authorization",
 	}))
 
 	api.Get("/projects", handler.GetProjects)
