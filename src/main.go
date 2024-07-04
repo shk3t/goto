@@ -32,12 +32,12 @@ func main() {
 
 	app.Use(logger.New())
 	app.Use(swagger.New(swagger.Config{
-		BasePath: "/api/",
+		BasePath: os.Getenv("BASE_PATH") + "/api/",
 		FilePath: "./docs/swagger.json",
 		Path:     "docs",
 	}))
 
 	router.SetupRoutes(app)
 
-    app.Listen(":" + os.Getenv("PORT"))
+	app.Listen(":" + os.Getenv("PORT"))
 }

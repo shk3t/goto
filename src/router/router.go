@@ -3,6 +3,7 @@ package router
 import (
 	"goto/src/config"
 	"goto/src/handler"
+	"os"
 
 	jwtware "github.com/gofiber/contrib/jwt"
 
@@ -20,7 +21,7 @@ import (
 // @name Authorization
 // @description Prepend your JWT key with `Bearer`
 func SetupRoutes(app *fiber.App) {
-	api := app.Group("/api")
+	api := app.Group(os.Getenv("BASE_PATH") + "/api")
 
 	api.Post("/register", handler.Register)
 	api.Post("/login", handler.Login)
