@@ -5,6 +5,7 @@ import (
 	"goto/src/config"
 	"goto/src/database"
 	"goto/src/router"
+	"os"
 
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/contrib/swagger"
@@ -38,5 +39,5 @@ func main() {
 
 	router.SetupRoutes(app)
 
-	app.Listen(":3228")
+    app.Listen(":" + os.Getenv("PORT"))
 }

@@ -1,6 +1,6 @@
 basePath: /api/
 definitions:
-  goto_src_model.DelayedTask:
+  model.DelayedTask:
     properties:
       action:
         type: string
@@ -19,7 +19,7 @@ definitions:
       userId:
         type: integer
     type: object
-  goto_src_model.ProjectMin:
+  model.ProjectMin:
     properties:
       containerization:
         type: string
@@ -43,14 +43,14 @@ definitions:
         type: string
       tasks:
         items:
-          $ref: '#/definitions/goto_src_model.TaskMin'
+          $ref: '#/definitions/model.TaskMin'
         type: array
       updatedAt:
         type: string
       userId:
         type: integer
     type: object
-  goto_src_model.ProjectPublic:
+  model.ProjectPublic:
     properties:
       containerization:
         type: string
@@ -74,18 +74,18 @@ definitions:
         type: string
       tasks:
         items:
-          $ref: '#/definitions/goto_src_model.Task'
+          $ref: '#/definitions/model.Task'
         type: array
       updatedAt:
         type: string
       userId:
         type: integer
     type: object
-  goto_src_model.Solution:
+  model.Solution:
     properties:
       files:
         items:
-          $ref: '#/definitions/goto_src_model.SolutionFile'
+          $ref: '#/definitions/model.SolutionFile'
         type: array
       id:
         type: integer
@@ -94,13 +94,13 @@ definitions:
       status:
         type: string
       task:
-        $ref: '#/definitions/goto_src_model.TaskMin'
+        $ref: '#/definitions/model.TaskMin'
       updatedAt:
         type: string
       userId:
         type: integer
     type: object
-  goto_src_model.SolutionFile:
+  model.SolutionFile:
     properties:
       code:
         type: string
@@ -111,35 +111,35 @@ definitions:
       solutionId:
         type: integer
     type: object
-  goto_src_model.SolutionInput:
+  model.SolutionInput:
     properties:
       files:
         items:
-          $ref: '#/definitions/goto_src_model.SolutionFile'
+          $ref: '#/definitions/model.SolutionFile'
         type: array
       taskId:
         type: integer
     type: object
-  goto_src_model.SolutionMin:
+  model.SolutionMin:
     properties:
       id:
         type: integer
       status:
         type: string
       task:
-        $ref: '#/definitions/goto_src_model.TaskMin'
+        $ref: '#/definitions/model.TaskMin'
       updatedAt:
         type: string
       userId:
         type: integer
     type: object
-  goto_src_model.Task:
+  model.Task:
     properties:
       description:
         type: string
       files:
         items:
-          $ref: '#/definitions/goto_src_model.TaskFile'
+          $ref: '#/definitions/model.TaskFile'
         type: array
       id:
         type: integer
@@ -158,7 +158,7 @@ definitions:
       updatedAt:
         type: string
     type: object
-  goto_src_model.TaskFile:
+  model.TaskFile:
     properties:
       id:
         type: integer
@@ -171,7 +171,7 @@ definitions:
       taskId:
         type: integer
     type: object
-  goto_src_model.TaskFilePrivate:
+  model.TaskFilePrivate:
     properties:
       id:
         type: integer
@@ -182,7 +182,7 @@ definitions:
       taskId:
         type: integer
     type: object
-  goto_src_model.TaskMin:
+  model.TaskMin:
     properties:
       description:
         type: string
@@ -205,13 +205,13 @@ definitions:
       updatedAt:
         type: string
     type: object
-  goto_src_model.TaskPrivate:
+  model.TaskPrivate:
     properties:
       description:
         type: string
       files:
         items:
-          $ref: '#/definitions/goto_src_model.TaskFilePrivate'
+          $ref: '#/definitions/model.TaskFilePrivate'
         type: array
       id:
         type: integer
@@ -228,7 +228,7 @@ definitions:
       updatedAt:
         type: string
     type: object
-  goto_src_model.User:
+  model.User:
     properties:
       id:
         type: integer
@@ -237,7 +237,6 @@ definitions:
       password:
         type: string
     type: object
-host: localhost:3228
 info:
   contact:
     name: Goto GitHub
@@ -264,7 +263,7 @@ paths:
           schema:
             items:
               items:
-                $ref: '#/definitions/goto_src_model.DelayedTask'
+                $ref: '#/definitions/model.DelayedTask'
               type: array
             type: array
       security:
@@ -286,7 +285,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/goto_src_model.DelayedTask'
+            $ref: '#/definitions/model.DelayedTask'
       security:
       - BearerAuth: []
       summary: Детализация отложенного задания
@@ -314,7 +313,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/goto_src_model.User'
+            $ref: '#/definitions/model.User'
       summary: Логин
       tags:
       - Авторизация
@@ -349,7 +348,7 @@ paths:
           schema:
             items:
               items:
-                $ref: '#/definitions/goto_src_model.ProjectMin'
+                $ref: '#/definitions/model.ProjectMin'
               type: array
             type: array
       security:
@@ -380,7 +379,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/goto_src_model.DelayedTask'
+            $ref: '#/definitions/model.DelayedTask'
       security:
       - BearerAuth: []
       summary: Добавление проекта с задачами
@@ -413,7 +412,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/goto_src_model.ProjectPublic'
+            $ref: '#/definitions/model.ProjectPublic'
       security:
       - BearerAuth: []
       summary: Детализация моего проекта
@@ -447,7 +446,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/goto_src_model.DelayedTask'
+            $ref: '#/definitions/model.DelayedTask'
       security:
       - BearerAuth: []
       summary: Обновление проекта с задачами
@@ -475,7 +474,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/goto_src_model.User'
+            $ref: '#/definitions/model.User'
       summary: Регистрация
       tags:
       - Авторизация
@@ -493,7 +492,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/goto_src_model.Solution'
+            $ref: '#/definitions/model.Solution'
       security:
       - BearerAuth: []
       summary: Детализация моего решения
@@ -554,7 +553,7 @@ paths:
           schema:
             items:
               items:
-                $ref: '#/definitions/goto_src_model.SolutionMin'
+                $ref: '#/definitions/model.SolutionMin'
               type: array
             type: array
       security:
@@ -571,14 +570,14 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/goto_src_model.SolutionInput'
+          $ref: '#/definitions/model.SolutionInput'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/goto_src_model.Solution'
+            $ref: '#/definitions/model.Solution'
       security:
       - BearerAuth: []
       summary: Отправить решение на проверку
@@ -619,7 +618,7 @@ paths:
           schema:
             items:
               items:
-                $ref: '#/definitions/goto_src_model.TaskMin'
+                $ref: '#/definitions/model.TaskMin'
               type: array
             type: array
       security:
@@ -641,7 +640,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/goto_src_model.TaskPrivate'
+            $ref: '#/definitions/model.TaskPrivate'
       security:
       - BearerAuth: []
       summary: Детализация задачи

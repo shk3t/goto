@@ -13,7 +13,6 @@ import (
 // @description Web app for code challenges with any environments
 // @contact.name Goto GitHub
 // @contact.url http://github.com/shk3t/goto
-// @host localhost:3228
 // @basePath /api/
 // @schemes http
 // @securityDefinitions.apikey BearerAuth

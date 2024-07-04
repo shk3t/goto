@@ -54,7 +54,7 @@ const docTemplate = `{
                             "items": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/definitions/goto_src_model.DelayedTask"
+                                    "$ref": "#/definitions/model.DelayedTask"
                                 }
                             }
                         }
@@ -89,7 +89,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/goto_src_model.DelayedTask"
+                            "$ref": "#/definitions/model.DelayedTask"
                         }
                     }
                 }
@@ -130,7 +130,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/goto_src_model.User"
+                            "$ref": "#/definitions/model.User"
                         }
                     }
                 }
@@ -190,7 +190,7 @@ const docTemplate = `{
                             "items": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/definitions/goto_src_model.ProjectMin"
+                                    "$ref": "#/definitions/model.ProjectMin"
                                 }
                             }
                         }
@@ -239,7 +239,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/goto_src_model.DelayedTask"
+                            "$ref": "#/definitions/model.DelayedTask"
                         }
                     }
                 }
@@ -272,7 +272,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/goto_src_model.ProjectPublic"
+                            "$ref": "#/definitions/model.ProjectPublic"
                         }
                     }
                 }
@@ -326,7 +326,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/goto_src_model.DelayedTask"
+                            "$ref": "#/definitions/model.DelayedTask"
                         }
                     }
                 }
@@ -389,7 +389,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/goto_src_model.User"
+                            "$ref": "#/definitions/model.User"
                         }
                     }
                 }
@@ -422,7 +422,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/goto_src_model.Solution"
+                            "$ref": "#/definitions/model.Solution"
                         }
                     }
                 }
@@ -516,7 +516,7 @@ const docTemplate = `{
                             "items": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/definitions/goto_src_model.SolutionMin"
+                                    "$ref": "#/definitions/model.SolutionMin"
                                 }
                             }
                         }
@@ -546,7 +546,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/goto_src_model.SolutionInput"
+                            "$ref": "#/definitions/model.SolutionInput"
                         }
                     }
                 ],
@@ -554,7 +554,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/goto_src_model.Solution"
+                            "$ref": "#/definitions/model.Solution"
                         }
                     }
                 }
@@ -620,7 +620,7 @@ const docTemplate = `{
                             "items": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/definitions/goto_src_model.TaskMin"
+                                    "$ref": "#/definitions/model.TaskMin"
                                 }
                             }
                         }
@@ -655,7 +655,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/goto_src_model.TaskPrivate"
+                            "$ref": "#/definitions/model.TaskPrivate"
                         }
                     }
                 }
@@ -663,7 +663,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "goto_src_model.DelayedTask": {
+        "model.DelayedTask": {
             "type": "object",
             "properties": {
                 "action": {
@@ -692,7 +692,7 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.ProjectMin": {
+        "model.ProjectMin": {
             "type": "object",
             "properties": {
                 "containerization": {
@@ -728,7 +728,7 @@ const docTemplate = `{
                 "tasks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/goto_src_model.TaskMin"
+                        "$ref": "#/definitions/model.TaskMin"
                     }
                 },
                 "updatedAt": {
@@ -739,7 +739,7 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.ProjectPublic": {
+        "model.ProjectPublic": {
             "type": "object",
             "properties": {
                 "containerization": {
@@ -775,7 +775,7 @@ const docTemplate = `{
                 "tasks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/goto_src_model.Task"
+                        "$ref": "#/definitions/model.Task"
                     }
                 },
                 "updatedAt": {
@@ -786,13 +786,13 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.Solution": {
+        "model.Solution": {
             "type": "object",
             "properties": {
                 "files": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/goto_src_model.SolutionFile"
+                        "$ref": "#/definitions/model.SolutionFile"
                     }
                 },
                 "id": {
@@ -805,7 +805,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "task": {
-                    "$ref": "#/definitions/goto_src_model.TaskMin"
+                    "$ref": "#/definitions/model.TaskMin"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -815,7 +815,7 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.SolutionFile": {
+        "model.SolutionFile": {
             "type": "object",
             "properties": {
                 "code": {
@@ -832,13 +832,13 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.SolutionInput": {
+        "model.SolutionInput": {
             "type": "object",
             "properties": {
                 "files": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/goto_src_model.SolutionFile"
+                        "$ref": "#/definitions/model.SolutionFile"
                     }
                 },
                 "taskId": {
@@ -846,7 +846,7 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.SolutionMin": {
+        "model.SolutionMin": {
             "type": "object",
             "properties": {
                 "id": {
@@ -856,7 +856,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "task": {
-                    "$ref": "#/definitions/goto_src_model.TaskMin"
+                    "$ref": "#/definitions/model.TaskMin"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -866,7 +866,7 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.Task": {
+        "model.Task": {
             "type": "object",
             "properties": {
                 "description": {
@@ -875,7 +875,7 @@ const docTemplate = `{
                 "files": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/goto_src_model.TaskFile"
+                        "$ref": "#/definitions/model.TaskFile"
                     }
                 },
                 "id": {
@@ -904,7 +904,7 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.TaskFile": {
+        "model.TaskFile": {
             "type": "object",
             "properties": {
                 "id": {
@@ -924,7 +924,7 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.TaskFilePrivate": {
+        "model.TaskFilePrivate": {
             "type": "object",
             "properties": {
                 "id": {
@@ -941,7 +941,7 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.TaskMin": {
+        "model.TaskMin": {
             "type": "object",
             "properties": {
                 "description": {
@@ -976,7 +976,7 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.TaskPrivate": {
+        "model.TaskPrivate": {
             "type": "object",
             "properties": {
                 "description": {
@@ -985,7 +985,7 @@ const docTemplate = `{
                 "files": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/goto_src_model.TaskFilePrivate"
+                        "$ref": "#/definitions/model.TaskFilePrivate"
                     }
                 },
                 "id": {
@@ -1011,7 +1011,7 @@ const docTemplate = `{
                 }
             }
         },
-        "goto_src_model.User": {
+        "model.User": {
             "type": "object",
             "properties": {
                 "id": {
@@ -1039,7 +1039,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "",
-	Host:             "localhost:3228",
+	Host:             "",
 	BasePath:         "/api/",
 	Schemes:          []string{"http"},
 	Title:            "Goto",
