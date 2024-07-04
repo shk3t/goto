@@ -32,7 +32,7 @@ func main() {
 
 	app.Use(logger.New())
 	app.Use(swagger.New(swagger.Config{
-		BasePath: os.Getenv("URL_PREFIX") + "/api/",
+		BasePath: "/api/",
 		FilePath: "./docs/swagger.json",
 		Path:     "docs",
 	}))
