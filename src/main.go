@@ -32,9 +32,9 @@ func main() {
 
 	app.Use(logger.New())
 	app.Use(swagger.New(swagger.Config{
-		BasePath: "/api/",
+		BasePath: os.Getenv("URL_PREFIX") + "/api/",
 		FilePath: "./docs/swagger.json",
-		Path:     "",
+		Path:     "docs",
 	}))
 
 	router.SetupRoutes(app)
